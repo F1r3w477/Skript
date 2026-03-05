@@ -1,0 +1,8 @@
+# Core join/quit events (Fabric and Bukkit when wired).
+# Handlers only log; used to verify event bridges.
+
+on join:
+    log "CoreJoinQuit: player joined"
+
+on quit:
+    log "CoreJoinQuit: player quit"

@@ -20,6 +20,7 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,6 +136,13 @@ public class Environment {
 	private final List<PaperResource> paperDownloads;
 
 	/**
+	 * Optional explicit path to the Skript JAR to deploy for this environment,
+	 * relative to the project root. If null, the currently running JAR will be used.
+	 */
+	@Nullable
+	private String skriptJarPath;
+
+	/**
 	 * Where Skript should be placed under platform root.
 	 * Directories created as needed.
 	 */
@@ -165,12 +173,19 @@ public class Environment {
 		// Copy Skript to platform
 		Path skript = env.resolve(skriptTarget);
 		Files.createDirectories(skript.getParent());
-		try {
-			Files.copy(new File(getClass().getProtectionDomain().getCodeSource().getLocation()
-				.toURI()).toPath(), skript, StandardCopyOption.REPLACE_EXISTING);
-		} catch (URISyntaxException e) {
-			throw new AssertionError(e);
+		Path sourceJar;
+		String projectRootProperty = System.getProperty("skript.test.projectRoot");
+		if (skriptJarPath != null && projectRootProperty != null && !projectRootProperty.isBlank()) {
+			sourceJar = Paths.get(projectRootProperty).resolve(skriptJarPath);
+		} else {
+			try {
+				sourceJar = new File(getClass().getProtectionDomain().getCodeSource().getLocation()
+					.toURI()).toPath();
+			} catch (URISyntaxException e) {
+				throw new AssertionError(e);
+			}
 		}
+		Files.copy(sourceJar, skript, StandardCopyOption.REPLACE_EXISTING);
 
 		if (onlyCopySkript) {
 			return;
@@ -199,6 +214,13 @@ public class Environment {
 			try (InputStream is = url.openStream()) {
 				Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
 			}
+		}
+
+		// Ensure EULA is accepted when requested via JVM flag so servers like Fabric,
+		// which don't honor the system property directly, can start in automated tests.
+		if (Arrays.asList(commandLine).contains("-Dcom.mojang.eula.agree=true")) {
+			Path eulaFile = env.resolve("eula.txt");
+			Files.writeString(eulaFile, "eula=true\n", StandardCharsets.UTF_8);
 		}
 	}
 

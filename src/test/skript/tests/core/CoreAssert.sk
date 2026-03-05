@@ -1,0 +1,9 @@
+# Core assertion DSL (test mode only): assert true is false with "msg"
+# Fails the named test when the assertion fails.
+
+test "core assert fail":
+    assert true is false with "intentional failure for CoreAssert"
+
+test "core assert pass":
+    assert true is true with "this should not appear"
+    assert false is false with "this should not appear"

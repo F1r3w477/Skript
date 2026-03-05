@@ -1,0 +1,23 @@
+{
+  "name": "fabric-1.21.11",
+  "resources": [
+    { "source": "server.properties.generic", "target": "server.properties" }
+  ],
+  "downloads": [
+    {
+      "source": "https://meta.fabricmc.net/v2/versions/loader/1.21.11/0.18.4/1.1.1/server/jar",
+      "target": "fabric-server.jar"
+    },
+    {
+      "source": "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/0.141.0+1.21.11/fabric-api-0.141.0+1.21.11.jar",
+      "target": "mods/fabric-api.jar"
+    }
+  ],
+  "paperDownloads": [],
+  "skriptTarget": "mods/Skript-Fabric.jar",
+  "skriptJarPath": "skript-fabric/build/libs/Skript-Fabric.jar",
+  "commandLine": [
+    "-Dcom.mojang.eula.agree=true",
+    "-jar", "fabric-server.jar", "--nogui"
+  ]
+}

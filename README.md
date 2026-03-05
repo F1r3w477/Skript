@@ -80,7 +80,68 @@ server, but our build script will create one for you. Running the tests is easy:
 <code>skriptTestJava21</code> (1.21+) runs the tests on Java 21 supported versions.
 <code>skriptTest</code> runs the tests on all versions (currently identical to the Java 21 test).
 
+To run the test suite on the **Fabric** port:
+
+```
+./gradlew quickTestFabric
+```
+
+This builds the Fabric mod JAR, starts a Fabric 1.21.11 server, and runs the shared Skript test suite against it.
+
 By running the tests, you agree to Mojang's End User License Agreement.
+
+---
+
+## Skript on Fabric
+
+This repository includes a **Fabric** port of Skript's core engine, allowing scripts to run on Minecraft 1.21.11 with Fabric and Fabric API. The Fabric mod uses the same platform-agnostic core as the Paper plugin; feature parity is being expanded over time (see [docs/PARITY.md](docs/PARITY.md)).
+
+### Building the Fabric mod
+
+From the project root:
+
+```bash
+./gradlew :skript-fabric:build
+```
+
+The mod JAR is produced at `skript-fabric/build/libs/Skript-Fabric.jar`.
+
+### Installing on a Fabric server
+
+1. Install [Fabric Loader](https://fabricmc.net/use/) and [Fabric API](https://modrinth.com/mod/fabric-api) for Minecraft 1.21.11.
+2. Copy `Skript-Fabric.jar` into the server's `mods` folder.
+3. Start the server. Skript will create `config/skript/` and `config/skript/scripts/` the first time it runs.
+
+### Script directory
+
+Place your `.sk` script files in:
+
+- **Default:** `<server root>/config/skript/scripts/`
+
+Scripts are loaded at server start. Use the in-game command to reload without restarting:
+
+- `/skript reload` — reload all scripts from the scripts directory
+- `/skript test` — run the test suite (when the server is started under the test harness)
+
+### Supported syntax (Fabric)
+
+The Fabric port currently supports a minimal subset of the full Skript language:
+
+- Event handlers: `on load:`, `on join:`, `on quit:`, `on world_load:`, `on world_unload:`
+- Effects: `broadcast "message"`, `log "message"`
+- Test mode: `test "name":` and `assert true is false with "message"` (for the test harness)
+
+Example script (`config/skript/scripts/welcome.sk`):
+
+```skript
+on load:
+    log "Skript (Fabric) scripts loaded."
+
+on join:
+    broadcast "A player joined!"
+```
+
+More language features and events are being migrated from the Paper plugin; see [docs/PARITY.md](docs/PARITY.md) for the current status.
 
 ### Releasing
 ```
@@ -173,3 +234,79 @@ You can find all contributors [here](https://github.com/SkriptLang/Skript/graphs
 All code is owned by its writer, licensed for others under GPLv3 (see [LICENSE](LICENSE)).
 Some contributors may choose to release their code under the MIT License.
 Further information can be found within [LICENSING.md](LICENSING.md).
+
+---
+
+## Skript Fabric Port Workspace
+
+This repository is also used as a workspace for a work-in-progress **Fabric-based port** of Skript.
+
+### Branches
+
+- `upstream-main`: read-only mirror of `SkriptLang/Skript`’s `master` branch. Never commit directly here; only fast‑forward from `upstream/master`.
+- `fabric`: main development branch for the Fabric port, created from `upstream-main`.
+
+To sync with upstream Skript and keep feature parity:
+
+1. Update the local mirror:
+   - `git checkout upstream-main`
+   - `git fetch upstream`
+   - `git pull --ff-only upstream master`
+2. Merge the new upstream work into the Fabric branch:
+   - `git checkout fabric`
+   - `git merge upstream-main` (or `git rebase upstream-main`)
+
+You can inspect what changed upstream since the last sync with:
+
+```bash
+git log <last-sync-tag>..upstream-main
+git diff <last-sync-tag>..upstream-main
+```
+
+### Gradle modules
+
+On the `fabric` branch, additional modules are declared in `settings.gradle`:
+
+- `skript-core`: planned shared engine/runtime code for Skript, independent of any platform.
+- `skript-bukkit`: planned Bukkit/Paper-specific layer which can be gradually extracted from the legacy plugin.
+- `skript-fabric`: initial Fabric mod project that depends on `skript-core`.
+
+The legacy Bukkit/Paper plugin remains in the root project for now; over time, logic can be moved into `skript-core` and platform-specific adapters in `skript-bukkit` / `skript-fabric`.
+
+To get a quick snapshot of how much of the legacy parser and test surface has been migrated into the new modules, you can run:
+
+```bash
+./gradlew conversionReport
+```
+
+This prints counts of parser/test classes in the legacy `lang`, `patterns`, and `test` packages and how many have simple-name counterparts in `skript-core`, `skript-bukkit`, or `skript-fabric`.
+
+### Building and running the Fabric mod
+
+The Fabric module uses the Fabric Loom Gradle plugin and defines its own `fabric.mod.json` and entrypoint.
+
+- To build the Fabric mod JAR:
+
+```bash
+./gradlew :skript-fabric:build
+```
+
+- To run a Fabric development server (provided by Loom):
+
+```bash
+./gradlew :skript-fabric:runServer
+```
+
+This will download the required Minecraft and Fabric dependencies on first run.
+
+### Porting workflow (feature-by-feature)
+
+When moving behaviour from the legacy Bukkit plugin into the shared core/Fabric/Bukkit modules, follow this workflow:
+
+1. **Pick a feature slice** (for example, a group of expressions, a structure, or a small part of the parser) and identify its classes under `src/main/java/ch/njol/skript/**`.
+2. **Extract platform-agnostic logic** into `skript-core` under an appropriate package, keeping it free of direct Bukkit/Fabric APIs. Use `SkriptPlatform`, `SkriptScheduler`, and `SkriptLogger` for any host interactions.
+3. **Add or extend platform adapters** in `skript-bukkit` and `skript-fabric` to implement any new abstractions needed by the core.
+4. **Ensure tests cover the behaviour** using the shared `.sk` test suite under `src/test/skript/tests`, and run both:
+   - `./gradlew quickTest` (Bukkit/Paper)
+   - `./gradlew quickTestFabric` (Fabric)
+5. **Track progress over time** with `./gradlew conversionReport` so you can see the balance between legacy-only and core-backed code for parser/test-related classes.

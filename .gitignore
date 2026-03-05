@@ -232,3 +232,6 @@ test_runners/
 
 ## Mac MetaData
 **/.DS_Store
+
+## Fabric Loom dev runtime
+skript-fabric/run/

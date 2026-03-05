@@ -48,6 +48,12 @@ dependencies {
 
 	testShadow group: 'junit', name: 'junit', version: '4.13.2'
 	testShadow group: 'org.easymock', name: 'easymock', version: '5.5.0'
+
+	// Shared core engine and Bukkit platform bridge. The core module is used
+	// by both the legacy plugin and the new Fabric mod; the Bukkit bridge
+	// allows the root plugin to opt into the shared engine over time.
+	implementation project(':skript-core')
+	implementation project(':skript-bukkit')
 }
 
 checkstyle {
@@ -215,6 +221,7 @@ void createTestTask(String name, String desc, String environments, int javaVersi
 			standardInput = System.in
 		}
 		group = 'execution'
+		systemProperty 'skript.test.projectRoot', project.projectDir.absolutePath
 		classpath = files([
 			artifact,
 			project.configurations.runtimeClasspath.find { it.name.startsWith('gson') },
@@ -269,6 +276,7 @@ compileTestJava.options.encoding = 'UTF-8'
 String environments = 'src/test/skript/environments/';
 int envJava = project.property('testEnvJavaVersion') == null ? latestJava : Integer.parseInt(project.property('testEnvJavaVersion') as String)
 createTestTask('quickTest', 'Runs tests on one environment being the latest supported Java and Minecraft.', environments + env, latestJava, 0)
+createTestTask('quickTestFabric', 'Runs tests on Fabric 1.21.11 environment.', environments + 'fabric-1.21.11.json', latestJava, 0)
 createTestTask('skriptTestJava21', 'Runs tests on all Java 21 environments.', environments + 'java21', java21, 0)
 createTestTask('skriptTestDev', 'Runs testing server and uses \'system.in\' for command input, stop server to finish.', environments + env, envJava, 0, Modifiers.DEV_MODE, Modifiers.DEBUG)
 createTestTask('skriptProfile', 'Starts the testing server with JProfiler support.', environments + env, latestJava, -1, Modifiers.PROFILE)
@@ -284,6 +292,97 @@ createTestTask('JUnitJava21', 'Runs JUnit tests on all Java 21 environments.', e
 tasks.register('JUnit') {
 	description = 'Runs JUnit tests on all environments.'
 	dependsOn JUnitJava21
+}
+
+// Simple reporting task to help track how much of the legacy
+// parser/test surface has been migrated into skript-core / skript-fabric.
+tasks.register('conversionReport') {
+	description = 'Prints a summary of legacy parser/test classes and which ones have core/fabric counterparts.'
+	group = 'help'
+	doLast {
+		def legacyRoots = [
+				'src/main/java/ch/njol/skript/lang',
+				'src/main/java/ch/njol/skript/patterns',
+				'src/main/java/ch/njol/skript/test'
+		]
+		def coreRoots = [
+				'skript-core/src/main/java',
+				'skript-fabric/src/main/java',
+				'skript-bukkit/src/main/java'
+		]
+
+		def toSimpleNames = { List<String> roots ->
+			def byRoot = [:]
+			roots.each { root ->
+				def dir = file(root)
+				if (!dir.exists()) {
+					return
+				}
+				def tree = fileTree(dir: dir, include: '**/*.java')
+				def names = new LinkedHashSet<String>()
+				tree.each { f ->
+					names.add(f.name.substring(0, f.name.length() - '.java'.length()))
+				}
+				byRoot[root] = [count: names.size(), names: names]
+			}
+			return byRoot
+		}
+
+		def legacy = toSimpleNames(legacyRoots)
+		def core = toSimpleNames(coreRoots)
+
+		def legacyAll = new LinkedHashSet<String>()
+		legacy.values().each { legacyAll.addAll(it.names as Set<String>) }
+
+		def coreAll = new LinkedHashSet<String>()
+		core.values().each { coreAll.addAll(it.names as Set<String>) }
+
+		def migrated = legacyAll.intersect(coreAll)
+		def unmigrated = legacyAll - migrated
+
+		println '=== Skript Fabric Conversion Report ==='
+		println "Legacy parser/test classes (by simple name): ${legacyAll.size()}"
+		println "Core/Fabric/Bukkit classes           : ${coreAll.size()}"
+		println "Legacy names with a new-module match : ${migrated.size()}"
+		println "Legacy names without a match         : ${unmigrated.size()}"
+		println ''
+
+		println 'Legacy roots:'
+		legacy.each { root, info ->
+			println " - ${root}: ${info.count} classes"
+		}
+		println 'New-module roots:'
+		core.each { root, info ->
+			println " - ${root}: ${info.count} classes"
+		}
+
+		if (!migrated.isEmpty()) {
+			println ''
+			println 'Sample migrated names (legacy -> core/fabric/bukkit match by simple name):'
+			migrated.take(25).each { name ->
+				println " - ${name}"
+			}
+			if (migrated.size() > 25) {
+				println "   ... and ${migrated.size() - 25} more"
+			}
+		}
+
+		if (!unmigrated.isEmpty()) {
+			println ''
+			println 'Sample legacy-only names (no simple-name match in new modules):'
+			unmigrated.take(25).each { name ->
+				println " - ${name}"
+			}
+			if (unmigrated.size() > 25) {
+				println "   ... and ${unmigrated.size() - 25} more"
+			}
+		}
+	}
+}
+
+tasks.named('quickTestFabric') {
+	systemProperty 'skript.test.remake', 'true'
+	dependsOn ':skript-fabric:build'
 }
 
 // custom test task

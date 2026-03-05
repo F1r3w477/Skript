@@ -1,0 +1,58 @@
+plugins {
+    id 'fabric-loom' version '1.14.7'
+}
+
+group = 'com.github.SkriptLang'
+version = rootProject.version
+
+java {
+    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.fabricmc.net/' }
+}
+
+dependencies {
+    // Minecraft + mappings (1.21.11 as initial target)
+    minecraft "com.mojang:minecraft:1.21.11"
+    mappings loom.officialMojangMappings()
+
+    // Fabric loader and API
+    modImplementation "net.fabricmc:fabric-loader:0.16.9"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.0+1.21.11"
+
+    // Shared Skript core logic
+    implementation project(':skript-core')
+    // Bundle core into the Fabric mod JAR so tests can run it directly on a standalone Fabric server
+    include project(':skript-core')
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    runs {
+        server {
+            server()
+            name "Skript Fabric Dev Server"
+            programArgs "--nogui"
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}
+
+tasks.named('remapJar') {
+    archiveFileName.set('Skript-Fabric.jar')
+}
+

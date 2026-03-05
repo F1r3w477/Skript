@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "skript-fabric",
+  "version": "${version}",
+  "name": "Skript (Fabric Port)",
+  "description": "A work-in-progress Fabric-based port of the Skript language.",
+  "authors": [
+    "SkriptLang contributors",
+    "Fabric port contributors"
+  ],
+  "contact": {
+    "homepage": "https://github.com/SkriptLang/Skript",
+    "issues": "https://github.com/SkriptLang/Skript/issues"
+  },
+  "license": "GPL-3.0-or-later",
+  "icon": "assets/skript-fabric/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ch.njol.skript.fabric.SkriptFabricMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": "1.21.11",
+    "fabric-api": "*"
+  }
+}
+

@@ -1,0 +1,6 @@
+# Minimal core syntax: on load, broadcast, log.
+# Used by both Bukkit and Fabric test harnesses.
+
+on load:
+    broadcast "CoreMinimal load fired"
+    log "CoreMinimal log line"

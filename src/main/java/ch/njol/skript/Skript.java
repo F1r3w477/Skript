@@ -40,6 +40,10 @@ import ch.njol.skript.test.runner.SkriptJUnitTest;
 import ch.njol.skript.test.runner.SkriptTestEvent;
 import ch.njol.skript.test.runner.TestMode;
 import ch.njol.skript.test.runner.TestTracker;
+import ch.njol.skript.bukkit.platform.BukkitSkriptLogger;
+import ch.njol.skript.bukkit.platform.BukkitSkriptPlatform;
+import ch.njol.skript.bukkit.platform.BukkitSkriptScheduler;
+import ch.njol.skript.core.SkriptBootstrap;
 import ch.njol.skript.timings.SkriptTimings;
 import ch.njol.skript.update.ReleaseManifest;
 import ch.njol.skript.update.ReleaseStatus;
@@ -222,6 +226,20 @@ public final class Skript extends JavaPlugin implements Listener {
 		if (instance != null)
 			throw new IllegalStateException("Cannot create multiple instances of Skript!");
 		instance = this;
+	}
+
+	/**
+	 * Lazily initialise the shared core engine on Bukkit when running under
+	 * the upstream test harness. In normal server operation the legacy
+	 * parsing/runtime path remains authoritative for now.
+	 */
+	private void maybeStartCoreEngineForTests() {
+		if (!TestMode.ENABLED) {
+			return;
+		}
+		BukkitSkriptLogger coreLogger = new BukkitSkriptLogger(getLogger());
+		BukkitSkriptScheduler coreScheduler = new BukkitSkriptScheduler(this);
+		BukkitSkriptPlatform.startCore(this, coreLogger, coreScheduler);
 	}
 
 	private static Version minecraftVersion = new Version(666), UNKNOWN_VERSION = new Version(666);
@@ -411,6 +429,11 @@ public final class Skript extends JavaPlugin implements Listener {
 		}
 
 		handleJvmArguments(); // JVM arguments
+
+		// When running under the upstream Skript test harness, also start the
+		// shared core engine so that Fabric and Bukkit exercise the same
+		// parser/runtime code paths as they are migrated into skript-core.
+		maybeStartCoreEngineForTests();
 
 		version = new Version("" + getDescription().getVersion()); // Skript version
 

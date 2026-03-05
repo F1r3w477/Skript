@@ -65,7 +65,9 @@ public class PlatformMain {
 		}
 		System.out.println("Test environments: "
 				+ envs.stream().map(Environment::getName).collect(Collectors.joining(", ")));
-		
+
+		boolean remakeEnv = Boolean.getBoolean("skript.test.remake");
+
 		Set<String> allTests = new HashSet<>();
 		Map<String, List<TestError>> failures = new HashMap<>();
 		
@@ -75,7 +77,7 @@ public class PlatformMain {
 		envs.sort(Comparator.comparing(Environment::getName));
 		for (Environment env : envs) {
 			System.out.println("Starting testing on " + env.getName());
-			env.initialize(dataRoot, runnerRoot, false);
+			env.initialize(dataRoot, runnerRoot, remakeEnv);
 			TestResults results = env.runTests(runnerRoot, testsRoot, devMode, genDocs, jUnit, debug, verbosity, timeout, jvmArgs);
 			if (results == null) {
 				if (devMode) {
