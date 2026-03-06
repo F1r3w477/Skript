@@ -1,0 +1,16 @@
+# Phase 2: if true / if false with then/else.
+# Core conditional execution (TriggerItem chain).
+
+on load:
+    broadcast "CoreConditional start"
+    if true:
+        log "then branch (true)"
+        broadcast "if true ran"
+    else:
+        log "else branch (true)"
+    if false:
+        log "then branch (false)"
+    else:
+        log "else branch (false)"
+        broadcast "if false else ran"
+    broadcast "CoreConditional end"

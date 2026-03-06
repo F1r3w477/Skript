@@ -1,7 +1,7 @@
 package ch.njol.skript.core;
 
 import ch.njol.skript.core.lang.ExecutionContext;
-import ch.njol.skript.core.lang.Statement;
+import ch.njol.skript.core.lang.trigger.CoreTriggerItem;
 import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.core.model.ScriptFile;
 import ch.njol.skript.platform.SkriptLogger;
@@ -79,8 +79,9 @@ final class SkriptRuntime {
     private void executeHandler(ScriptEventHandler handler, RuntimeEventContext context) {
         String testName = testNameByHandler.get(handler);
         ExecutionContext ctx = new ExecutionContext(logger, context, handler, testName);
-        for (Statement statement : handler.getStatements()) {
-            statement.run(ctx);
+        CoreTriggerItem start = handler.getFirstTriggerItem();
+        if (start != null) {
+            CoreTriggerItem.walk(start, ctx);
         }
     }
 

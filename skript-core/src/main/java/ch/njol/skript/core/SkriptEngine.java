@@ -1,11 +1,11 @@
 package ch.njol.skript.core;
 
+import ch.njol.skript.core.config.ScriptConfig;
 import ch.njol.skript.core.model.ScriptFile;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.platform.SkriptPlatform;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -66,16 +66,14 @@ final class SkriptEngine {
 
         logger.info("Found " + scriptFiles.size() + " script file(s).");
         for (Path script : scriptFiles) {
-            try {
-                List<String> lines = Files.readAllLines(script, StandardCharsets.UTF_8);
-                ScriptFile parsed = parser.parse(script, lines);
-                loadedScripts.add(parsed);
+            ScriptConfig config = ScriptConfig.load(script, logger);
+            if (config == null) continue;
 
-                logger.info("Loaded script: " + scriptsDir.relativize(script) +
-                    " (" + parsed.getEventHandlers().size() + " event handler(s))");
-            } catch (IOException e) {
-                logger.error("Failed to read script file " + script, e);
-            }
+            ScriptFile parsed = parser.parse(script, config.getRoot());
+            loadedScripts.add(parsed);
+
+            logger.info("Loaded script: " + scriptsDir.relativize(script) +
+                " (" + parsed.getEventHandlers().size() + " event handler(s))");
         }
 
         runtime.registerScripts(loadedScripts);
