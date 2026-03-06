@@ -5,9 +5,10 @@ import ch.njol.skript.core.condition.CondTrue;
 import ch.njol.skript.core.conditions.CondCompare;
 import ch.njol.skript.core.conditions.CondIsOp;
 import ch.njol.skript.core.lang.BroadcastStatement;
+import ch.njol.skript.core.lang.Expressions;
 import ch.njol.skript.core.lang.LogStatement;
 import ch.njol.skript.core.lang.SendMessageStatement;
-import ch.njol.skript.platform.SkriptPlayerInfo;
+import ch.njol.skript.core.lang.SetVariableStatement;
 import ch.njol.skript.core.patterns.CorePatternCompiler;
 import ch.njol.skript.core.patterns.CoreSkriptPattern;
 
@@ -53,15 +54,17 @@ public final class SyntaxRegistry {
     private void registerBuiltins() {
         registerCondition("true", m -> CondTrue.INSTANCE);
         registerCondition("false", m -> CondFalse.INSTANCE);
-        registerCondition("%-player% is op", m -> new CondIsOp(m.getExpression(0)));
-        registerCondition("%-object% is %-object%", m -> new CondCompare(m.getExpression(0), m.getExpression(1)));
-        registerCondition("%-string% is %-string%", m -> new CondCompare(m.getExpression(0), m.getExpression(1)));
+        registerCondition("%-player% is op", m -> new CondIsOp(Expressions.fromParsed(m.getExpression(0))));
+        registerCondition("%-object% is %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-string% is %-string%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerEffect("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerEffect("log %string%", m -> new LogStatement(m.getString(0)));
         registerEffect("send %string%", m -> new SendMessageStatement(m.getString(0)));
+        registerEffect("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
         registerStatement("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerStatement("log %string%", m -> new LogStatement(m.getString(0)));
         registerStatement("send %string%", m -> new SendMessageStatement(m.getString(0)));
+        registerStatement("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
     }
 
     public void registerCondition(String patternString, Function<CoreSkriptPattern.CoreMatchResult, ch.njol.skript.core.condition.Condition> factory) {

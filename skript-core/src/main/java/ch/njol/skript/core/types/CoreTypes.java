@@ -1,5 +1,7 @@
 package ch.njol.skript.core.types;
 
+import ch.njol.skript.core.variables.VariableRef;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,6 +44,14 @@ public final class CoreTypes {
             return null;
         }));
         register(new CoreClassInfo<>("object", Object.class, (s, ctx) -> s));
+        register(new CoreClassInfo<>("variable", VariableRef.class, (s, ctx) -> {
+            if (s == null || s.isEmpty()) return null;
+            String t = s.trim();
+            if (t.startsWith("{") && t.endsWith("}")) {
+                t = t.substring(1, t.length() - 1).trim();
+            }
+            return t.isEmpty() ? null : new VariableRef(t);
+        }));
     }
 
     public <T> void register(CoreClassInfo<T> info) {

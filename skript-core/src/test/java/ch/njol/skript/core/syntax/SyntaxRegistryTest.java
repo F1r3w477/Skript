@@ -4,6 +4,7 @@ import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
 import ch.njol.skript.core.lang.BroadcastStatement;
 import ch.njol.skript.core.lang.LogStatement;
+import ch.njol.skript.core.lang.SetVariableStatement;
 import ch.njol.skript.core.lang.Statement;
 import org.junit.jupiter.api.Test;
 
@@ -43,5 +44,13 @@ class SyntaxRegistryTest {
         Statement st = reg.parseStatement("broadcast \"pattern\"");
         assertNotNull(st);
         assertInstanceOf(BroadcastStatement.class, st);
+    }
+
+    @Test
+    void parseSetVariableEffect() {
+        SyntaxRegistry reg = SyntaxRegistry.get();
+        Statement st = reg.parseEffect("set {_x} to 5");
+        assertNotNull(st);
+        assertInstanceOf(SetVariableStatement.class, st);
     }
 }

@@ -161,8 +161,12 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
 
     @Override
     public void registerTypes(CoreTypes types) {
-        types.register(new CoreClassInfo<>("player", SkriptPlayerInfo.class,
-            (s, ctx) -> resolvePlayer(s)));
+        types.register(new CoreClassInfo<>("player", Object.class, (s, ctx) -> {
+            if (s != null && "event-player".equalsIgnoreCase(s.trim())) {
+                return ch.njol.skript.core.event.EventValue.PLAYER;
+            }
+            return resolvePlayer(s);
+        }));
     }
 }
 

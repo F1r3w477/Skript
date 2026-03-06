@@ -4,6 +4,8 @@ import ch.njol.skript.core.lang.ExecutionContext;
 import ch.njol.skript.core.lang.trigger.CoreTriggerItem;
 import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.core.model.ScriptFile;
+import ch.njol.skript.core.variables.CoreVariables;
+import ch.njol.skript.core.variables.VariableScope;
 import ch.njol.skript.platform.SkriptLogger;
 
 import java.util.ArrayList;
@@ -78,10 +80,16 @@ final class SkriptRuntime {
 
     private void executeHandler(ScriptEventHandler handler, RuntimeEventContext context) {
         String testName = testNameByHandler.get(handler);
-        ExecutionContext ctx = new ExecutionContext(logger, context, handler, testName);
-        CoreTriggerItem start = handler.getFirstTriggerItem();
-        if (start != null) {
-            CoreTriggerItem.walk(start, ctx);
+        VariableScope scope = new VariableScope();
+        ExecutionContext ctx = new ExecutionContext(logger, context, scope, handler, testName);
+        CoreVariables.setScope(scope);
+        try {
+            CoreTriggerItem start = handler.getFirstTriggerItem();
+            if (start != null) {
+                CoreTriggerItem.walk(start, ctx);
+            }
+        } finally {
+            CoreVariables.clearScope();
         }
     }
 

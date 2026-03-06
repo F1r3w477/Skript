@@ -2,6 +2,7 @@ package ch.njol.skript.core.patterns;
 
 import ch.njol.skript.core.types.CoreTypes;
 import ch.njol.skript.core.types.ParseContextHolder;
+import ch.njol.skript.core.variables.VariableRef;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,6 +123,12 @@ public final class CoreSkriptPattern {
                 if (num == null) return null;
                 consumed = num;
                 toStore = parseNumber(num);
+            } else if ("variable".equalsIgnoreCase(typeName)) {
+                String token = matchVariableToken(expr);
+                if (token == null) return null;
+                consumed = token;
+                Object parsed = CoreTypes.get().parse("variable", token, ParseContextHolder.get());
+                toStore = parsed != null ? parsed : new VariableRef(token);
             } else {
                 Object parsed = CoreTypes.get().parse(typeName, expr.trim(), ParseContextHolder.get());
                 if (parsed == null) {
@@ -135,8 +142,9 @@ public final class CoreSkriptPattern {
             if (index >= 0 && index < result.expressions.length) {
                 result.expressions[index] = toStore;
             }
-            String remaining = expr.substring(consumed.length()).trim();
-            return next != null ? next.match(remaining, result) : remaining;
+            // Preserve leading space so next literal (e.g. " to ") can match
+            String remaining = expr.substring(consumed.length());
+            return next != null ? next.match(remaining, result) : remaining.trim();
         }
 
         /** Returns { consumed substring, unquoted value } or null. */
@@ -164,6 +172,19 @@ public final class CoreSkriptPattern {
             if (t.startsWith("-") || t.startsWith("+")) i = 1;
             while (i < t.length() && (Character.isDigit(t.charAt(i)) || t.charAt(i) == '.')) i++;
             return i > 0 ? t.substring(0, i) : null;
+        }
+
+        /** Consume a variable token: {name} or a single word. Returns consumed substring or null. */
+        private static String matchVariableToken(String expr) {
+            String t = expr.trim();
+            if (t.isEmpty()) return null;
+            if (t.startsWith("{")) {
+                int end = t.indexOf('}', 1);
+                if (end == -1) return null;
+                return t.substring(0, end + 1);
+            }
+            int space = t.indexOf(' ');
+            return space == -1 ? t : t.substring(0, space);
         }
 
         private static Object parseNumber(String s) {
