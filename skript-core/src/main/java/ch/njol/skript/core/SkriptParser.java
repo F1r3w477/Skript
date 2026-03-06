@@ -4,8 +4,10 @@ import ch.njol.skript.core.config.ScriptConfig;
 import ch.njol.skript.core.config.ScriptEntryNode;
 import ch.njol.skript.core.config.ScriptNode;
 import ch.njol.skript.core.config.ScriptSectionNode;
+import ch.njol.skript.core.condition.Condition;
 import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
+import ch.njol.skript.core.syntax.SyntaxRegistry;
 import ch.njol.skript.core.lang.Statement;
 import ch.njol.skript.core.lang.StatementParser;
 import ch.njol.skript.core.lang.trigger.ConditionalTriggerItem;
@@ -137,12 +139,24 @@ final class SkriptParser {
     private static List<Statement> parseBodyToStatements(List<String> bodyLines) {
         List<Statement> statements = new ArrayList<>();
         for (String line : bodyLines) {
-            Statement st = StatementParser.parseLine(line);
+            Statement st = parseLineWithRegistry(line);
             if (st != null) {
                 statements.add(st);
             }
         }
         return statements;
+    }
+
+    /** Try pattern registry first, then legacy StatementParser. */
+    private static Statement parseLineWithRegistry(String line) {
+        if (line == null) return null;
+        String trimmed = line.stripLeading();
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) return null;
+        Statement st = SyntaxRegistry.get().parseStatement(trimmed);
+        if (st != null) return st;
+        st = SyntaxRegistry.get().parseEffect(trimmed);
+        if (st != null) return st;
+        return StatementParser.parseLine(line);
     }
 
     /**
@@ -156,7 +170,7 @@ final class SkriptParser {
         if (nodes.isEmpty()) return nextAfter;
         ScriptNode first = nodes.get(0);
         if (first instanceof ScriptEntryNode entry) {
-            Statement st = StatementParser.parseLine(entry.getKey());
+            Statement st = parseLineWithRegistry(entry.getKey());
             CoreTriggerItem next = buildChain(nodes.subList(1, nodes.size()), nextAfter);
             if (st != null) return new StatementTriggerItem(st, next);
             return next;
@@ -164,9 +178,15 @@ final class SkriptParser {
         if (first instanceof ScriptSectionNode section) {
             String key = section.getKey().trim();
             String keyLower = key.toLowerCase(Locale.ROOT);
-            if ("if true".equals(keyLower) || "if false".equals(keyLower)) {
-                ch.njol.skript.core.condition.Condition cond =
-                    "if true".equals(keyLower) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+            Condition cond = null;
+            if (keyLower.startsWith("if ")) {
+                String condPart = key.substring(2).trim();
+                cond = SyntaxRegistry.get().parseCondition(condPart);
+                if (cond == null && ("true".equals(condPart) || "false".equals(condPart))) {
+                    cond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+            }
+            if (cond != null) {
                 List<ScriptNode> thenNodes = section.getChildren();
                 List<ScriptNode> elseNodes = new ArrayList<>();
                 int consumed = 1;
