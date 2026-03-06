@@ -1,5 +1,8 @@
 package ch.njol.skript.core.patterns;
 
+import ch.njol.skript.core.types.CoreTypes;
+import ch.njol.skript.core.types.ParseContextHolder;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -120,8 +123,14 @@ public final class CoreSkriptPattern {
                 consumed = num;
                 toStore = parseNumber(num);
             } else {
-                consumed = expr;
-                toStore = expr.trim();
+                Object parsed = CoreTypes.get().parse(typeName, expr.trim(), ParseContextHolder.get());
+                if (parsed == null) {
+                    consumed = expr;
+                    toStore = expr.trim();
+                } else {
+                    consumed = expr;
+                    toStore = parsed;
+                }
             }
             if (index >= 0 && index < result.expressions.length) {
                 result.expressions[index] = toStore;

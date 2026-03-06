@@ -8,6 +8,8 @@ import ch.njol.skript.core.condition.Condition;
 import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
 import ch.njol.skript.core.syntax.SyntaxRegistry;
+import ch.njol.skript.core.types.ParseContext;
+import ch.njol.skript.core.types.ParseContextHolder;
 import ch.njol.skript.core.lang.Statement;
 import ch.njol.skript.core.lang.StatementParser;
 import ch.njol.skript.core.lang.trigger.ConditionalTriggerItem;
@@ -61,6 +63,15 @@ final class SkriptParser {
      * entries matching "test \"name\"" are registered as tests.
      */
     ScriptFile parse(Path path, ScriptSectionNode root) {
+        ParseContextHolder.set(ParseContext.DEFAULT);
+        try {
+            return parseInner(path, root);
+        } finally {
+            ParseContextHolder.clear();
+        }
+    }
+
+    private ScriptFile parseInner(Path path, ScriptSectionNode root) {
         List<ScriptEventHandler> handlers = new ArrayList<>();
         List<String> testNames = new ArrayList<>();
 
@@ -93,6 +104,15 @@ final class SkriptParser {
      * scans for "on &lt;event&gt;:" and collects body lines until the next event header.
      */
     ScriptFile parse(Path path, List<String> lines) {
+        ParseContextHolder.set(ParseContext.DEFAULT);
+        try {
+            return parseInner(path, lines);
+        } finally {
+            ParseContextHolder.clear();
+        }
+    }
+
+    private ScriptFile parseInner(Path path, List<String> lines) {
         List<ScriptEventHandler> handlers = new ArrayList<>();
         List<String> testNames = new ArrayList<>();
 
