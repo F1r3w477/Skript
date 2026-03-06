@@ -1,5 +1,7 @@
 package ch.njol.skript.platform;
 
+import ch.njol.skript.core.types.CoreTypes;
+
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
@@ -59,6 +61,35 @@ public interface SkriptPlatform {
      */
     default Collection<SkriptPlayerInfo> getOnlinePlayers() {
         return Collections.emptyList();
+    }
+
+    /**
+     * Whether the given player is a server operator. Default false; platforms override.
+     */
+    default boolean isOp(SkriptPlayerInfo player) {
+        return false;
+    }
+
+    /**
+     * Resolve a player by name (or identifier). Used when parsing %player% in patterns.
+     * Default returns null; platforms override to resolve from online/offline players.
+     */
+    default SkriptPlayerInfo resolvePlayer(String name) {
+        return null;
+    }
+
+    /**
+     * Send a message to a player. If player is null, default implementation logs the message.
+     */
+    default void sendMessage(SkriptPlayerInfo player, String message) {
+        // Default: no player target, could log; implementations override to send to player
+    }
+
+    /**
+     * Register platform-specific types (e.g. "player") with the core type system.
+     * Called by the engine before loading scripts so that patterns like %player% can be parsed.
+     */
+    default void registerTypes(CoreTypes types) {
     }
 }
 

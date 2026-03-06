@@ -1,12 +1,14 @@
 package ch.njol.skript.core.lang;
 
 import ch.njol.skript.core.RuntimeEventContext;
+import ch.njol.skript.core.SkriptBootstrap;
 import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.platform.SkriptLogger;
+import ch.njol.skript.platform.SkriptPlatform;
 
 /**
  * Context passed to {@link Statement#run(ExecutionContext)}.
- * Provides logger, event context, and optional test name for the current handler.
+ * Provides logger, event context, platform, and optional test name for the current handler.
  */
 public final class ExecutionContext {
 
@@ -40,5 +42,12 @@ public final class ExecutionContext {
      */
     public String getTestName() {
         return testName;
+    }
+
+    /**
+     * Platform (Bukkit, Fabric, etc.) for conditions/effects that need platform hooks.
+     */
+    public SkriptPlatform getPlatform() {
+        return SkriptBootstrap.getPlatform();
     }
 }

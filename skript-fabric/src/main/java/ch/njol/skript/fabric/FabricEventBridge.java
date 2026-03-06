@@ -2,6 +2,7 @@ package ch.njol.skript.fabric;
 
 import ch.njol.skript.core.RuntimeEventContext;
 import ch.njol.skript.core.SkriptBootstrap;
+import ch.njol.skript.fabric.platform.FabricSkriptPlatform;
 import ch.njol.skript.fabric.platform.FabricSkriptPlayerInfo;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
@@ -19,6 +20,10 @@ final class FabricEventBridge {
 
     FabricEventBridge() {
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+            var platform = SkriptBootstrap.getPlatform();
+            if (platform instanceof FabricSkriptPlatform fabric) {
+                fabric.setServer(server);
+            }
             SkriptBootstrap.fireEvent("load", new RuntimeEventContext("server_started", null));
         });
 

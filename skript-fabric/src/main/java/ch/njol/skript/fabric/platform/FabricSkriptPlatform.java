@@ -1,14 +1,23 @@
 package ch.njol.skript.fabric.platform;
 
+import ch.njol.skript.core.types.CoreClassInfo;
+import ch.njol.skript.core.types.CoreTypes;
+import ch.njol.skript.core.types.ParseContext;
 import ch.njol.skript.platform.SkriptCommandExecutor;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.platform.SkriptPlatform;
+import ch.njol.skript.platform.SkriptPlayerInfo;
 import ch.njol.skript.platform.SkriptScheduler;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.server.MinecraftServer;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Fabric implementation of the core Skript platform abstraction.
@@ -20,6 +29,7 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
     private final Path configDirectory;
     private final Path scriptsDirectory;
     private volatile SkriptCommandExecutor skriptCommandExecutor;
+    private volatile MinecraftServer server;
 
     public FabricSkriptPlatform(SkriptLogger logger) {
         this.logger = logger;
@@ -92,6 +102,67 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
      */
     public SkriptCommandExecutor getSkriptCommandExecutor() {
         return skriptCommandExecutor;
+    }
+
+    /**
+     * Set by the event bridge when the server starts. Used for getOnlinePlayers, resolvePlayer, isOp.
+     */
+    public void setServer(MinecraftServer server) {
+        this.server = server;
+    }
+
+    @Override
+    public Collection<SkriptPlayerInfo> getOnlinePlayers() {
+        MinecraftServer s = server;
+        if (s == null) return Collections.emptyList();
+        return s.getPlayerList().getPlayers().stream()
+            .map(FabricSkriptPlayerInfo::new)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean isOp(SkriptPlayerInfo player) {
+        // TODO: use ServerOpList with correct 1.21 API (NameAndId) when available
+        return false;
+    }
+
+    @Override
+    public SkriptPlayerInfo resolvePlayer(String name) {
+        if (name == null || name.isBlank()) return null;
+        MinecraftServer s = server;
+        if (s == null) return null;
+        var player = s.getPlayerList().getPlayerByName(name);
+        return player != null ? new FabricSkriptPlayerInfo(player) : null;
+    }
+
+    @Override
+    public void sendMessage(SkriptPlayerInfo player, String message) {
+        if (message == null) return;
+        MinecraftServer s = server;
+        if (s == null) {
+            logger.info("[send] " + message);
+            return;
+        }
+        if (player == null) {
+            logger.info("[send] " + message);
+            return;
+        }
+        try {
+            var serverPlayer = s.getPlayerList().getPlayer(UUID.fromString(player.getId()));
+            if (serverPlayer != null) {
+                serverPlayer.sendSystemMessage(net.minecraft.network.chat.Component.literal(message));
+            } else {
+                logger.info("[send to " + player.getName() + "] " + message);
+            }
+        } catch (IllegalArgumentException e) {
+            logger.info("[send to " + player.getName() + "] " + message);
+        }
+    }
+
+    @Override
+    public void registerTypes(CoreTypes types) {
+        types.register(new CoreClassInfo<>("player", SkriptPlayerInfo.class,
+            (s, ctx) -> resolvePlayer(s)));
     }
 }
 
