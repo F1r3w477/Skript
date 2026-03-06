@@ -2,6 +2,9 @@ package ch.njol.skript.core.syntax;
 
 import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
+import ch.njol.skript.core.conditions.CondCompare;
+import ch.njol.skript.core.conditions.CondContains;
+import ch.njol.skript.core.conditions.CondIsSet;
 import ch.njol.skript.core.lang.BroadcastStatement;
 import ch.njol.skript.core.lang.LogStatement;
 import ch.njol.skript.core.lang.SetVariableStatement;
@@ -52,5 +55,13 @@ class SyntaxRegistryTest {
         Statement st = reg.parseEffect("set {_x} to 5");
         assertNotNull(st);
         assertInstanceOf(SetVariableStatement.class, st);
+    }
+
+    @Test
+    void parseConditionsIsSetContainsCompare() {
+        SyntaxRegistry reg = SyntaxRegistry.get();
+        assertInstanceOf(CondIsSet.class, reg.parseCondition("{_x} is set"));
+        assertInstanceOf(CondContains.class, reg.parseCondition("\"hello\" contains \"ell\""));
+        assertInstanceOf(CondCompare.class, reg.parseCondition("1 is 1"));
     }
 }

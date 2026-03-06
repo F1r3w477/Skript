@@ -8,7 +8,13 @@ import java.util.Map;
 /**
  * Registry of type parsers by code name (e.g. "player", "number", "string").
  * Used by the pattern parser to resolve %type% placeholders. Platforms register
- * their types; core registers string and number by default.
+ * their types via {@link ch.njol.skript.platform.SkriptPlatform#registerTypes};
+ * core registers string, number, boolean, object, and variable by default.
+ * <p>
+ * To add a new type: register a {@link CoreClassInfo} with a code name (lowercase)
+ * and a parser. Pattern slots like %type% then map 1:1 to getExpression(i) in
+ * {@link ch.njol.skript.core.patterns.CoreSkriptPattern.CoreMatchResult}; use
+ * {@link ch.njol.skript.core.lang.Expressions#fromParsed} when building conditions/effects.
  */
 public final class CoreTypes {
 

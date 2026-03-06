@@ -6,7 +6,9 @@ import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.core.model.ScriptFile;
 import ch.njol.skript.core.variables.CoreVariables;
 import ch.njol.skript.core.variables.VariableScope;
+import ch.njol.skript.platform.SkriptCommandSender;
 import ch.njol.skript.platform.SkriptLogger;
+import ch.njol.skript.platform.SkriptPlatform;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +34,14 @@ final class SkriptRuntime {
     }
 
     void registerScripts(List<ScriptFile> scripts) {
+        registerScripts(scripts, null);
+    }
+
+    /**
+     * Register script handlers. When platform is non-null, command sections
+     * (eventName "command:name") are registered with the platform instead of the event map.
+     */
+    void registerScripts(List<ScriptFile> scripts, SkriptPlatform platform) {
         handlersByEvent.clear();
         testNameByHandler.clear();
 
@@ -40,14 +50,20 @@ final class SkriptRuntime {
             String testNameForFile = testNames.size() == 1 ? testNames.get(0) : null;
 
             for (ScriptEventHandler handler : script.getEventHandlers()) {
-                String key = normaliseEventName(handler.getEventName());
+                String eventName = handler.getEventName();
+                if (platform != null && eventName.startsWith("command:")) {
+                    String cmdName = eventName.substring("command:".length());
+                    platform.registerCommand(cmdName, "Script command", (SkriptCommandSender sender, String[] args) -> {
+                        RuntimeEventContext ctx = new RuntimeEventContext("command", sender.getName(), null, null);
+                        executeHandler(handler, ctx);
+                    });
+                    continue;
+                }
+                String key = normaliseEventName(eventName);
                 handlersByEvent
                     .computeIfAbsent(key, k -> new ArrayList<>())
                     .add(handler);
 
-                // Also allow firing all handlers via a synthetic "tests" event
-                // so Fabric can execute them in test mode without knowing
-                // their concrete event types yet.
                 handlersByEvent
                     .computeIfAbsent("tests", k -> new ArrayList<>())
                     .add(handler);

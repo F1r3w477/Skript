@@ -43,6 +43,10 @@ final class SkriptParser {
     private static final Pattern TEST_HEADER =
         Pattern.compile("^test\\s+\"(.+?)\"\\s*:?.*$", Pattern.CASE_INSENSITIVE);
 
+    // Matches command section: command /name or command /name:
+    private static final Pattern COMMAND_HEADER =
+        Pattern.compile("^command\\s+/(\\S+)\\s*$", Pattern.CASE_INSENSITIVE);
+
     private final SkriptLogger logger;
     @SuppressWarnings("unused")
     private final CoreSkriptPattern.CoreMatchResult scratchMatchResult;
@@ -86,7 +90,8 @@ final class SkriptParser {
                 continue;
             }
             if (node instanceof ScriptSectionNode section) {
-                Matcher testMatcher = TEST_HEADER.matcher(section.getKey());
+                String key = section.getKey().trim();
+                Matcher testMatcher = TEST_HEADER.matcher(key);
                 if (testMatcher.matches()) {
                     String testName = testMatcher.group(1).trim();
                     TestRegistry.registerTest(testName);
@@ -95,7 +100,14 @@ final class SkriptParser {
                     handlers.add(new ScriptEventHandler("tests", chain, testName));
                     continue;
                 }
-                Matcher m = EVENT_HEADER_KEY.matcher(section.getKey());
+                Matcher cmdMatcher = COMMAND_HEADER.matcher(key);
+                if (cmdMatcher.matches()) {
+                    String cmdName = cmdMatcher.group(1).toLowerCase(Locale.ROOT).trim();
+                    CoreTriggerItem chain = buildBodyChain(section);
+                    handlers.add(new ScriptEventHandler("command:" + cmdName, chain));
+                    continue;
+                }
+                Matcher m = EVENT_HEADER_KEY.matcher(key);
                 if (m.matches()) {
                     String eventName = m.group(1).toLowerCase(Locale.ROOT).trim();
                     CoreTriggerItem chain = buildBodyChain(section);
@@ -139,7 +151,17 @@ final class SkriptParser {
                 testNames.add(testName);
             }
 
-            String key = trimmed.endsWith(":") ? trimmed.substring(0, trimmed.length() - 1) : trimmed;
+            String key = trimmed.endsWith(":") ? trimmed.substring(0, trimmed.length() - 1).trim() : trimmed.trim();
+            Matcher cmdMatcher = COMMAND_HEADER.matcher(key);
+            if (trimmed.endsWith(":") && cmdMatcher.matches()) {
+                if (currentEvent != null) {
+                    List<Statement> statements = parseBodyToStatements(currentBody);
+                    handlers.add(new ScriptEventHandler(currentEvent, statements));
+                    currentBody = new ArrayList<>();
+                }
+                currentEvent = "command:" + cmdMatcher.group(1).toLowerCase(Locale.ROOT).trim();
+                continue;
+            }
             Matcher m = EVENT_HEADER_KEY.matcher(key);
             if (trimmed.endsWith(":") && m.matches()) {
                 if (currentEvent != null) {

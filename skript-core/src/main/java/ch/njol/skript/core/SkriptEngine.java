@@ -78,7 +78,7 @@ final class SkriptEngine {
                 " (" + parsed.getEventHandlers().size() + " event handler(s))");
         }
 
-        runtime.registerScripts(loadedScripts);
+        runtime.registerScripts(loadedScripts, platform);
     }
 
     List<ScriptFile> getLoadedScripts() {
