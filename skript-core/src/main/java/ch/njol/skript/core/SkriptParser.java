@@ -86,6 +86,15 @@ final class SkriptParser {
                 continue;
             }
             if (node instanceof ScriptSectionNode section) {
+                Matcher testMatcher = TEST_HEADER.matcher(section.getKey());
+                if (testMatcher.matches()) {
+                    String testName = testMatcher.group(1).trim();
+                    TestRegistry.registerTest(testName);
+                    testNames.add(testName);
+                    CoreTriggerItem chain = buildBodyChain(section);
+                    handlers.add(new ScriptEventHandler("tests", chain, testName));
+                    continue;
+                }
                 Matcher m = EVENT_HEADER_KEY.matcher(section.getKey());
                 if (m.matches()) {
                     String eventName = m.group(1).toLowerCase(Locale.ROOT).trim();

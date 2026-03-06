@@ -52,7 +52,10 @@ final class SkriptRuntime {
                     .computeIfAbsent("tests", k -> new ArrayList<>())
                     .add(handler);
 
-                if (testNameForFile != null) {
+                String name = handler.getAssociatedTestName();
+                if (name != null) {
+                    testNameByHandler.put(handler, name);
+                } else if (testNameForFile != null) {
                     testNameByHandler.put(handler, testNameForFile);
                 }
             }

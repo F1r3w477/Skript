@@ -18,14 +18,23 @@ public final class ScriptEventHandler {
     private final String eventName;
     private final CoreTriggerItem firstTriggerItem;
     private final List<Statement> statements;
+    private final String associatedTestName;
 
     /**
      * Builds a handler from a trigger chain (primary path from parser).
      */
     public ScriptEventHandler(String eventName, CoreTriggerItem firstTriggerItem) {
+        this(eventName, firstTriggerItem, null);
+    }
+
+    /**
+     * Builds a handler from a trigger chain with an optional test name (for "test \"name\":" sections).
+     */
+    public ScriptEventHandler(String eventName, CoreTriggerItem firstTriggerItem, String associatedTestName) {
         this.eventName = eventName;
         this.firstTriggerItem = firstTriggerItem;
         this.statements = collectStatements(firstTriggerItem);
+        this.associatedTestName = associatedTestName;
     }
 
     /**
@@ -36,6 +45,7 @@ public final class ScriptEventHandler {
         this.eventName = eventName;
         this.statements = List.copyOf(statements);
         this.firstTriggerItem = chainFromStatements(statements);
+        this.associatedTestName = null;
     }
 
     public String getEventName() {
@@ -54,6 +64,13 @@ public final class ScriptEventHandler {
      */
     public List<Statement> getStatements() {
         return Collections.unmodifiableList(statements);
+    }
+
+    /**
+     * Test name when this handler was built from a "test \"name\":" section; null otherwise.
+     */
+    public String getAssociatedTestName() {
+        return associatedTestName;
     }
 
     private static CoreTriggerItem chainFromStatements(List<Statement> list) {
