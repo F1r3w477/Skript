@@ -3,12 +3,16 @@ package ch.njol.skript.core.syntax;
 import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
 import ch.njol.skript.core.conditions.CondCompare;
+import ch.njol.skript.core.conditions.CondCompareGreater;
+import ch.njol.skript.core.conditions.CondCompareLess;
 import ch.njol.skript.core.conditions.CondCompareNot;
 import ch.njol.skript.core.conditions.CondContains;
 import ch.njol.skript.core.conditions.CondIsOp;
 import ch.njol.skript.core.conditions.CondIsSet;
 import ch.njol.skript.core.variables.VariableRef;
+import ch.njol.skript.core.lang.AssertConditionStatement;
 import ch.njol.skript.core.lang.BroadcastStatement;
+import ch.njol.skript.core.lang.DeleteVariableStatement;
 import ch.njol.skript.core.lang.Expressions;
 import ch.njol.skript.core.lang.LogStatement;
 import ch.njol.skript.core.lang.SendMessageStatement;
@@ -67,14 +71,44 @@ public final class SyntaxRegistry {
         registerCondition("%-object% is %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerCondition("%-object% is not %-object%", m -> new CondCompareNot(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerCondition("%-string% is %-string%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-number% is greater than %-number%", m -> new CondCompareGreater(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-object% is greater than %-object%", m -> new CondCompareGreater(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-number% is less than %-number%", m -> new CondCompareLess(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-object% is less than %-object%", m -> new CondCompareLess(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerEffect("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerEffect("log %string%", m -> new LogStatement(m.getString(0)));
         registerEffect("send %string%", m -> new SendMessageStatement(m.getString(0)));
+        registerEffect("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
         registerEffect("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        registerEffect("assert < with > with %string%", m -> {
+            try {
+                String condStr = m.getExpression(0) != null ? String.valueOf(m.getExpression(0)) : null;
+                if (condStr == null || condStr.isEmpty()) return null;
+                ch.njol.skript.core.condition.Condition cond = get().parseCondition(condStr.trim());
+                if (cond == null) cond = CondTrue.INSTANCE; // stub so line is recognised
+                return new AssertConditionStatement(cond, Expressions.fromParsed(m.getExpression(1)));
+            } catch (ClassCastException e) {
+                return null;
+            }
+        });
+        registerEffect("delete %variable%", m -> new DeleteVariableStatement(m.getExpression(0)));
         registerStatement("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerStatement("log %string%", m -> new LogStatement(m.getString(0)));
         registerStatement("send %string%", m -> new SendMessageStatement(m.getString(0)));
+        registerStatement("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
         registerStatement("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        registerStatement("assert < with > with %string%", m -> {
+            try {
+                String condStr = m.getExpression(0) != null ? String.valueOf(m.getExpression(0)) : null;
+                if (condStr == null || condStr.isEmpty()) return null;
+                ch.njol.skript.core.condition.Condition cond = get().parseCondition(condStr.trim());
+                if (cond == null) cond = CondTrue.INSTANCE; // stub so line is recognised
+                return new AssertConditionStatement(cond, Expressions.fromParsed(m.getExpression(1)));
+            } catch (ClassCastException e) {
+                return null;
+            }
+        });
+        registerStatement("delete %variable%", m -> new DeleteVariableStatement(m.getExpression(0)));
     }
 
     public void registerCondition(String patternString, Function<CoreSkriptPattern.CoreMatchResult, ch.njol.skript.core.condition.Condition> factory) {
@@ -107,7 +141,8 @@ public final class SyntaxRegistry {
         for (Entry<ch.njol.skript.core.lang.Statement> e : effects) {
             CoreSkriptPattern.CoreMatchResult match = e.pattern.match(trimmed);
             if (match != null) {
-                return e.factory.apply(match);
+                ch.njol.skript.core.lang.Statement st = e.factory.apply(match);
+                if (st != null) return st;
             }
         }
         return null;
@@ -119,7 +154,8 @@ public final class SyntaxRegistry {
         for (Entry<ch.njol.skript.core.lang.Statement> e : statements) {
             CoreSkriptPattern.CoreMatchResult match = e.pattern.match(trimmed);
             if (match != null) {
-                return e.factory.apply(match);
+                ch.njol.skript.core.lang.Statement st = e.factory.apply(match);
+                if (st != null) return st;
             }
         }
         return null;

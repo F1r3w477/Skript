@@ -14,7 +14,9 @@ import ch.njol.skript.core.lang.Statement;
 import ch.njol.skript.core.lang.StatementParser;
 import ch.njol.skript.core.lang.trigger.ConditionalTriggerItem;
 import ch.njol.skript.core.lang.trigger.CoreTriggerItem;
+import ch.njol.skript.core.lang.trigger.LoopNTimesTriggerItem;
 import ch.njol.skript.core.lang.trigger.StatementTriggerItem;
+import ch.njol.skript.core.lang.trigger.WhileTriggerItem;
 import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.core.model.ScriptFile;
 import ch.njol.skript.core.patterns.CoreSkriptPattern;
@@ -253,6 +255,84 @@ final class SkriptParser {
             }
             if ("else".equals(keyLower)) {
                 return buildChain(nodes.subList(1, nodes.size()), nextAfter);
+            }
+            if (keyLower.startsWith("while ")) {
+                String condPart = key.substring(6).trim();
+                Condition whileCond = SyntaxRegistry.get().parseCondition(condPart);
+                if (whileCond == null && ("true".equals(condPart) || "false".equals(condPart))) {
+                    whileCond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+                if (whileCond != null) {
+                    CoreTriggerItem nextAfterLoop = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                    WhileTriggerItem whileItem = new WhileTriggerItem(whileCond, nextAfterLoop);
+                    CoreTriggerItem bodyChain = buildChain(section.getChildren(), whileItem);
+                    whileItem.setBodyFirst(bodyChain);
+                    return whileItem;
+                }
+            }
+            // parse: run section body once (optionally capture logs later)
+            if ("parse".equals(keyLower)) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // loop N times:
+            if (keyLower.matches("loop\\s+\\d+\\s+times")) {
+                Matcher loopMatcher = Pattern.compile("loop\\s+(\\d+)\\s+times", Pattern.CASE_INSENSITIVE).matcher(key);
+                if (loopMatcher.find()) {
+                    int n = Integer.parseInt(loopMatcher.group(1));
+                    CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                    LoopNTimesTriggerItem loopItem = new LoopNTimesTriggerItem(n, nextAfterThis);
+                    CoreTriggerItem bodyChain = buildChain(section.getChildren(), new LoopNTimesTriggerItem.Tail(loopItem));
+                    loopItem.setBodyFirst(bodyChain);
+                    return loopItem;
+                }
+            }
+            // for ... in ... / loop ... in ... / loop %variable%: run body once (silent no-op for section key)
+            if ((keyLower.startsWith("for ") && key.contains(" in "))
+                || (keyLower.startsWith("loop ") && key.contains(" in "))
+                || (keyLower.startsWith("loop ") && key.trim().length() > 5 && !keyLower.contains(" times"))) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // parse if <condition>: run body once when condition is true
+            if (keyLower.startsWith("parse if ")) {
+                String condPart = key.substring("parse if ".length()).trim();
+                Condition parseIfCond = SyntaxRegistry.get().parseCondition(condPart);
+                if (parseIfCond == null && ("true".equals(condPart) || "false".equals(condPart))) {
+                    parseIfCond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                if (parseIfCond != null) {
+                    return new ConditionalTriggerItem(parseIfCond, bodyChain != null ? bodyChain : nextAfterThis, nextAfterThis);
+                }
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // if running minecraft "version": / running below minecraft "version" (stub: run body)
+            if (keyLower.startsWith("if running minecraft ") || keyLower.contains("running below minecraft")) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // suppress [the] ... warning[s]: run body (stub)
+            if (keyLower.startsWith("suppress ")) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // loop 1, 2, and 3: / loop {_x}, {_y} and {_z}: (stub: run body once)
+            if (keyLower.startsWith("loop ") && key.contains(",")) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
+            }
+            // loop blocks within ... / loop all itemtypes / any other "loop ...:" (stub: run body once)
+            if (keyLower.startsWith("loop ")) {
+                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
+                return bodyChain != null ? bodyChain : nextAfterThis;
             }
             Statement st = StatementParser.parseLine(key + ":");
             CoreTriggerItem next = buildChain(nodes.subList(1, nodes.size()), nextAfter);

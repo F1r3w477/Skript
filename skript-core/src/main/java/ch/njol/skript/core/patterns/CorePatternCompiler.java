@@ -6,6 +6,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Compiles a pattern string (e.g. "broadcast %string%", "set [the] %variable% to %object%")
  * into a {@link CoreSkriptPattern}. Supports literals, %type%, optional [ ],
  * choice |, group ( ), and backslash escape. No dependency on Bukkit or legacy patterns.
+ * <p>
+ * Strategy (Fabric conversion): extend this compiler to support the same pattern language
+ * as the legacy {@code ch.njol.skript.patterns} package over time, rather than migrating
+ * the legacy implementation into core. New patterns are registered in {@link ch.njol.skript.core.syntax.SyntaxRegistry}.
  */
 public final class CorePatternCompiler {
 
@@ -124,6 +128,24 @@ public final class CorePatternCompiler {
                     first = choice;
                     currentEnd = choice.getLastBranch();
                 }
+            } else if (c == '<') {
+                if (literal.length() > 0) {
+                    CoreSkriptPattern.CoreLiteralElement lit = new CoreSkriptPattern.CoreLiteralElement(literal.toString());
+                    literal = new StringBuilder();
+                    first = append(first, currentEnd, lit);
+                    currentEnd = lit;
+                }
+                int end = pattern.indexOf('>', i + 1);
+                if (end == -1) {
+                    throw new MalformedPatternException(pattern, "Unclosed < at " + i);
+                }
+                String delimiter = pattern.substring(i + 1, end);
+                int idx = expressionOffset.getAndIncrement();
+                CoreSkriptPattern.CoreRestUntilLiteralElement restEl =
+                    new CoreSkriptPattern.CoreRestUntilLiteralElement(delimiter, idx);
+                first = append(first, currentEnd, restEl);
+                currentEnd = restEl;
+                i = end;
             } else if (c == '%') {
                 if (literal.length() > 0) {
                     CoreSkriptPattern.CoreLiteralElement lit = new CoreSkriptPattern.CoreLiteralElement(literal.toString());

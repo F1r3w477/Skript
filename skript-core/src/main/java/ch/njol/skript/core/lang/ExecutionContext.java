@@ -7,6 +7,9 @@ import ch.njol.skript.core.variables.VariableScope;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.platform.SkriptPlatform;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Context passed to {@link Statement#run(ExecutionContext)}.
  * Provides logger, event context, variable scope, platform, and optional test name for the current handler.
@@ -18,6 +21,7 @@ public final class ExecutionContext {
     private final VariableScope variableScope;
     private final ScriptEventHandler handler;
     private final String testName;
+    private Map<String, Object> temporary;
 
     public ExecutionContext(SkriptLogger logger, RuntimeEventContext eventContext,
                             VariableScope variableScope, ScriptEventHandler handler, String testName) {
@@ -59,5 +63,22 @@ public final class ExecutionContext {
      */
     public SkriptPlatform getPlatform() {
         return SkriptBootstrap.getPlatform();
+    }
+
+    /**
+     * Per-run temporary state (e.g. loop counters). Cleared when the handler run ends.
+     */
+    @SuppressWarnings("unchecked")
+    public <T> T getTemporary(String key) {
+        return temporary != null ? (T) temporary.get(key) : null;
+    }
+
+    /**
+     * Set per-run temporary state.
+     */
+    public void setTemporary(String key, Object value) {
+        if (temporary == null) temporary = new HashMap<>();
+        if (value == null) temporary.remove(key);
+        else temporary.put(key, value);
     }
 }

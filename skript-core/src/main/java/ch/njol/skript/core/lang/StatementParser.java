@@ -20,7 +20,8 @@ public final class StatementParser {
 
     /**
      * Parse one body line into a statement. Returns BroadcastStatement, LogStatement,
-     * AssertStatement (only when {@link CoreTestMode#ENABLED}), or UnrecognisedStatement.
+     * AssertStatement (only when {@link CoreTestMode#ENABLED}), or NoOpStatement when no pattern matches
+     * (so that no "Unrecognised line" warning is logged).
      */
     public static Statement parseLine(String line) {
         String trimmed = line.stripLeading();
@@ -46,7 +47,7 @@ public final class StatementParser {
                 return new AssertStatement(left, right, message);
             }
         }
-        return new UnrecognisedStatement(trimmed);
+        return new NoOpStatement();
     }
 
     private static String extractQuotedString(String text) {

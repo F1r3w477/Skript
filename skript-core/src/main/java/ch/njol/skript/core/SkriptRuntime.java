@@ -64,10 +64,6 @@ final class SkriptRuntime {
                     .computeIfAbsent(key, k -> new ArrayList<>())
                     .add(handler);
 
-                handlersByEvent
-                    .computeIfAbsent("tests", k -> new ArrayList<>())
-                    .add(handler);
-
                 String name = handler.getAssociatedTestName();
                 if (name != null) {
                     testNameByHandler.put(handler, name);

@@ -2,7 +2,9 @@ package ch.njol.skript.core.types;
 
 import ch.njol.skript.core.variables.VariableRef;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,6 +52,7 @@ public final class CoreTypes {
             return null;
         }));
         register(new CoreClassInfo<>("object", Object.class, (s, ctx) -> s));
+        register(new CoreClassInfo<>("objects", List.class, (s, ctx) -> parseListLiteral(s)));
         register(new CoreClassInfo<>("variable", VariableRef.class, (s, ctx) -> {
             if (s == null || s.isEmpty()) return null;
             String t = s.trim();
@@ -58,6 +61,35 @@ public final class CoreTypes {
             }
             return t.isEmpty() ? null : new VariableRef(t);
         }));
+    }
+
+    /**
+     * Parse a comma- and "and"-separated list literal (e.g. "1, 5, and 10").
+     * Each part is parsed as number if possible, otherwise kept as string.
+     */
+    private static List<Object> parseListLiteral(String s) {
+        if (s == null || s.trim().isEmpty()) return List.of();
+        String t = s.trim();
+        List<Object> out = new ArrayList<>();
+        for (String part : t.split("\\s*,\\s*|\\s+and\\s+")) {
+            String p = part.trim();
+            if (p.isEmpty()) continue;
+            Object val = parseListItem(p);
+            out.add(val);
+        }
+        return out;
+    }
+
+    private static Object parseListItem(String p) {
+        try {
+            if (p.contains(".")) return Double.parseDouble(p);
+            return Long.parseLong(p);
+        } catch (NumberFormatException e) {
+            if (p.length() >= 2 && (p.startsWith("\"") && p.endsWith("\"") || p.startsWith("'") && p.endsWith("'"))) {
+                return p.substring(1, p.length() - 1).replace("\\\"", "\"").replace("\\'", "'");
+            }
+            return p;
+        }
     }
 
     public <T> void register(CoreClassInfo<T> info) {

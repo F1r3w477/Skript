@@ -358,6 +358,41 @@ public final class CoreSkriptPattern {
     }
 
     /**
+     * Matches from current position up to (but not including) a fixed literal delimiter.
+     * The captured substring (trimmed) is stored at the given expression index.
+     * Used for patterns like "assert &lt;with &gt; with %string%" where the condition is parsed from the captured segment.
+     */
+    public static final class CoreRestUntilLiteralElement extends CorePatternElement {
+
+        private final String delimiter;
+        private final int index;
+
+        public CoreRestUntilLiteralElement(String delimiter, int index) {
+            this.delimiter = delimiter == null ? "" : delimiter;
+            this.index = index;
+        }
+
+        @Override
+        String match(String expr, CoreMatchResult result) {
+            String exprLower = expr.toLowerCase(Locale.ROOT);
+            String delimLower = delimiter.toLowerCase(Locale.ROOT);
+            int pos = exprLower.indexOf(delimLower);
+            if (pos < 0) return null;
+            String captured = expr.substring(0, pos).trim();
+            if (index >= 0 && result.expressions != null && index < result.expressions.length) {
+                result.expressions[index] = captured;
+            }
+            String remaining = expr.substring(pos);
+            return next != null ? next.match(remaining, result) : remaining.trim();
+        }
+
+        @Override
+        String toFullString() {
+            return "<" + delimiter + ">";
+        }
+    }
+
+    /**
      * Result of a successful pattern match. Expression indices correspond to %type% slots
      * in the pattern in left-to-right order (index 0 = first %type%, etc.). Use
      * {@link #getExpression(int)} to obtain the parsed value; use {@link ch.njol.skript.core.lang.Expressions#fromParsed}
