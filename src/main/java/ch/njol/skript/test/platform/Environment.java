@@ -244,6 +244,14 @@ public class Environment {
 		if (genDocs)
 			args.add("-Dskript.forceregisterhooks=true");
 		args.add("-Dskript.testing.results=test_results.json");
+		String includeTest = System.getProperty("skript.testing.includeTest");
+		if (includeTest != null && !includeTest.isEmpty()) {
+			args.add("-Dskript.testing.includeTest=" + includeTest);
+		}
+		String fabricTrace = System.getProperty("skript.fabric.trace");
+		if (fabricTrace != null && !fabricTrace.isEmpty()) {
+			args.add("-Dskript.fabric.trace=" + fabricTrace);
+		}
 		args.add("-Ddisable.watchdog=true");
 		if (debug)
 			args.add("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000");

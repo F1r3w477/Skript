@@ -86,6 +86,46 @@ Tests that are known to fail on Fabric (e.g. depend on Bukkit-only or not-yet-po
 - `./gradlew quickTestFabric` runs the full test suite; excluded tests are omitted from the reported failed set so the build passes.
 - Use `./gradlew conversionReport` to track legacy vs core/fabric class counts.
 
+### Single-test Fabric run and tracing
+
+To run **one test** on Fabric and see **targeted logs** for conditional/parse/do-if:
+
+1. **Single test** (only the named test handler runs; others are skipped):
+   ```bash
+   ./gradlew quickTestFabric -Dskript.testing.includeTest="SecConditional - if any else"
+   ```
+   Use the exact test name as in the script (e.g. `SecConditional - if any else`, `SecConditional - if all else`, `parsing section`, `do if` from `SecConditional.sk`, `SecParse.sk`, `EffDoIf.sk`).
+
+2. **Trace logging** (logs from `ConditionalTriggerItem`, `CondCompare`, `ParseSectionTriggerItem`, `DoIfStatement`; goes to Fabric log output):
+   ```bash
+   ./gradlew quickTestFabric -Dskript.fabric.trace=true
+   ```
+
+3. **Both** (single test + trace):
+   ```bash
+   ./gradlew quickTestFabric -Dskript.testing.includeTest="SecConditional - if any else" -Dskript.fabric.trace=true
+   ```
+
+Properties are passed from the Gradle task to PlatformMain and then to the Fabric subprocess, so the server process receives them and the core uses `CoreTestMode.INCLUDE_TEST` and `skript.fabric.trace` as described above.
+
+## Path to full Fabric parity
+
+To get all tests passing on Fabric (no exclusions):
+
+1. **Conditional/parse/do-if (core runtime)**  
+   - SecConditional "if any else" / "if all else", "parsing section", "do if" pass in JVM unit tests but still fail in the Fabric server run.  
+   - Implemented: `ConditionalTriggerItem` sets a ThreadLocal so `CondCompare` treats both-null as false in multiline conditionals; parse section treats comment-only body as empty.  
+   - Likely cause of Fabric-only failure: trigger chain or context differs in the Fabric process (e.g. script loading path, class loading, or execution order). Next step: run a single excluded test in isolation on Fabric with logging to confirm which trigger type runs.
+
+2. **Functions (round, floor, clamp, etc.)**  
+   - Tests use call syntax: `round(1.5)`, `floor(1.24)`, `clamp(0, 2, 5)`.  
+   - Requires in skript-core: function-call expression parsing and a built-in function registry (or port of `DefaultFunctions` / `TestFunctions`).  
+   - Legacy: `Functions.registerFunction`, `ExprFunction`, `DefaultFunctions` (Bukkit).
+
+3. **Other exclusions**  
+   - Many are Bukkit-only (commands, inventory, entities, world, config), or need expression/effect porting (ExprTernary, broadcast double-eval, time since/until, etc.).  
+   - Tackle in batches: platform APIs in skript-fabric; expressions/effects in skript-core or shared code.
+
 ## Notes
 
 - Full Skript language (conditions, expressions, sections, etc.) runs only on the legacy Bukkit plugin today.

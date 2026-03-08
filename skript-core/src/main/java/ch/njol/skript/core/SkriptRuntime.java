@@ -85,10 +85,19 @@ final class SkriptRuntime {
             return;
         }
 
-        logger.info("Dispatching event '" + key + "' to " + handlers.size() + " handler(s)." +
-            (context != null && context.getSubject() != null ? " subject=" + context.getSubject() : ""));
+        String includeTest = CoreTestMode.INCLUDE_TEST;
+        List<ScriptEventHandler> toRun = handlers;
+        if (includeTest != null && !includeTest.isBlank() && "tests".equals(key)) {
+            toRun = handlers.stream()
+                .filter(h -> includeTest.equals(testNameByHandler.get(h)))
+                .toList();
+            logger.info("Dispatching event 'tests' (single-test filter='" + includeTest + "'): " + toRun.size() + " of " + handlers.size() + " handler(s).");
+        } else {
+            logger.info("Dispatching event '" + key + "' to " + handlers.size() + " handler(s)." +
+                (context != null && context.getSubject() != null ? " subject=" + context.getSubject() : ""));
+        }
 
-        for (ScriptEventHandler handler : handlers) {
+        for (ScriptEventHandler handler : toRun) {
             executeHandler(handler, context);
         }
     }

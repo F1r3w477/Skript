@@ -24,6 +24,9 @@ public final class CoreTestMode {
 	public static final String VERBOSITY = ENABLED ? System.getProperty(ROOT + "verbosity") : null;
 	public static final boolean JUNIT = "true".equalsIgnoreCase(System.getProperty(ROOT + "junit"));
 
+	/** When set, only run the test handler with this name (used for single-test Fabric debugging). */
+	public static final String INCLUDE_TEST = ENABLED ? System.getProperty(ROOT + "includeTest") : null;
+
 	private CoreTestMode() {
 	}
 }

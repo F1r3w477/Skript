@@ -273,6 +273,20 @@ final class SkriptParser {
         return THEN_KEY.equals(k) || k.startsWith(THEN_RUN_KEY);
     }
 
+    /** True if every child is an entry that is blank or a comment (no executable code). */
+    private static boolean onlyCommentsOrEmpty(List<ScriptNode> children) {
+        if (children.isEmpty()) return false;
+        for (ScriptNode child : children) {
+            if (child instanceof ScriptEntryNode entry) {
+                String line = entry.getKey().trim();
+                if (!line.isEmpty() && !line.startsWith("#")) return false;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static CoreTriggerItem buildChain(List<ScriptNode> nodes, CoreTriggerItem nextAfter) {
         if (nodes.isEmpty()) return nextAfter;
         ScriptNode first = nodes.get(0);
@@ -292,8 +306,8 @@ final class SkriptParser {
                 return buildChain(section.getChildren(), afterElse);
             }
 
-            // Multiline "if" or "if any" with "then"
-            if (("if".equals(keyLower) || "if any".equals(keyLower)) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
+            // Multiline "if", "if all", or "if any" with "then"
+            if (("if".equals(keyLower) || "if any".equals(keyLower) || "if all".equals(keyLower)) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
                 boolean ifAny = "if any".equals(keyLower);
                 Condition compound = parseMultilineConditions(section, ifAny);
                 ScriptSectionNode thenSection = (ScriptSectionNode) nodes.get(1);
@@ -302,8 +316,8 @@ final class SkriptParser {
                 return new ConditionalTriggerItem(compound, thenChain, elseChain);
             }
 
-            // Multiline "else if" or "else if any" with "then"
-            if ((keyLower.equals("else if") || keyLower.equals("else if any")) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
+            // Multiline "else if", "else if all", or "else if any" with "then"
+            if ((keyLower.equals("else if") || keyLower.equals("else if any") || keyLower.equals("else if all")) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
                 boolean ifAny = keyLower.equals("else if any");
                 Condition compound = parseMultilineConditions(section, ifAny);
                 ScriptSectionNode thenSection = (ScriptSectionNode) nodes.get(1);
@@ -388,7 +402,7 @@ final class SkriptParser {
                 CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
                 List<ScriptNode> children = section.getChildren();
                 CoreTriggerItem bodyChain = buildChain(children, nextAfterThis);
-                boolean bodyEmpty = children.isEmpty() || (bodyChain == nextAfterThis);
+                boolean bodyEmpty = children.isEmpty() || (bodyChain == nextAfterThis) || onlyCommentsOrEmpty(children);
                 return new ParseSectionTriggerItem(bodyChain, nextAfterThis, bodyEmpty);
             }
             // loop N times:

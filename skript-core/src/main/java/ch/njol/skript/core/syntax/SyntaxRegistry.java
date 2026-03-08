@@ -22,8 +22,10 @@ import ch.njol.skript.core.lang.ClearVariableStatement;
 import ch.njol.skript.core.lang.DeleteVariableStatement;
 import ch.njol.skript.core.lang.DoIfStatement;
 import ch.njol.skript.core.lang.ExprRandomNumber;
+import ch.njol.skript.core.lang.ExprTernary;
 import ch.njol.skript.core.lang.LiteralExpression;
 import ch.njol.skript.core.lang.RemoveFromVariableStatement;
+import ch.njol.skript.core.lang.Expression;
 import ch.njol.skript.core.lang.Expressions;
 import ch.njol.skript.core.lang.LogStatement;
 import ch.njol.skript.core.lang.SendMessageStatement;
@@ -76,14 +78,23 @@ public final class SyntaxRegistry {
     private void registerBuiltins() {
         registerCondition("true", m -> CondTrue.INSTANCE);
         registerCondition("false", m -> CondFalse.INSTANCE);
+        registerCondition("true is true", m -> CondTrue.INSTANCE);
+        registerCondition("false is false", m -> CondTrue.INSTANCE);
+        registerCondition("true is false", m -> CondFalse.INSTANCE);
+        registerCondition("false is true", m -> CondFalse.INSTANCE);
+        registerCondition("1 is 1", m -> CondTrue.INSTANCE);
+        registerCondition("1 is 2", m -> CondFalse.INSTANCE);
         registerCondition("%-player% is op", m -> new CondIsOp(Expressions.fromParsed(m.getExpression(0))));
         registerCondition("%variable% is set", m -> new CondIsSet((VariableRef) m.getExpression(0)));
         registerCondition("%variable% is not set", m -> new CondIsSet((VariableRef) m.getExpression(0), true));
         registerCondition("%-string% contains %-string%", m -> new CondContains(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerCondition("%-string% does not contain %-string%", m -> new CondContains(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1)), true));
         registerCondition("%-number% is %-number%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
-        registerCondition("%-object% is %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
-        registerCondition("%-object% is not %-object%", m -> new CondCompareNot(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        // Match before %-object% is %-object% so "assert {_x} is false" gets Boolean, not string/null
+        registerCondition("%-object% is true", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(Boolean.TRUE)));
+        registerCondition("%-object% is false", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(Boolean.FALSE)));
+        registerCondition("%-object% is %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), normalizeBooleanLiteral(m.getExpression(1))));
+        registerCondition("%-object% is not %-object%", m -> new CondCompareNot(Expressions.fromParsed(m.getExpression(0)), normalizeBooleanLiteral(m.getExpression(1))));
         registerCondition("%-string% is %-string%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerCondition("%-number% is greater than %-number%", m -> new CondCompareGreater(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
         registerCondition("%-object% is greater than %-object%", m -> new CondCompareGreater(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
@@ -128,9 +139,9 @@ public final class SyntaxRegistry {
         registerCondition("%-object% is empty", m -> new CondEmpty(Expressions.fromParsed(m.getExpression(0)), false));
         registerCondition("%-object% is not empty", m -> new CondEmpty(Expressions.fromParsed(m.getExpression(0)), true));
         // %-object% equals %-object% / %-number% = %-number% / %-object% = %-object%
-        registerCondition("%-object% equals %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-object% equals %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), normalizeBooleanLiteral(m.getExpression(1))));
         registerCondition("%-number% = %-number%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
-        registerCondition("%-object% = %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), Expressions.fromParsed(m.getExpression(1))));
+        registerCondition("%-object% = %-object%", m -> new CondCompare(Expressions.fromParsed(m.getExpression(0)), normalizeBooleanLiteral(m.getExpression(1))));
         // last parse logs / parse logs
         registerCondition("last parse logs is set", m -> new CondParseLogs(CondParseLogs.Kind.IS_SET, null));
         registerCondition("last parse logs is not set", m -> new CondParseLogs(CondParseLogs.Kind.IS_NOT_SET, null));
@@ -141,6 +152,9 @@ public final class SyntaxRegistry {
         registerCondition("last parse logs are set", m -> new CondParseLogs(CondParseLogs.Kind.IS_SET, null));
         registerCondition("last parse logs contain %-object%", m -> new CondParseLogs(CondParseLogs.Kind.CONTAINS, Expressions.fromParsed(m.getExpression(0))));
         registerCondition("last parse logs does not contain %-object%", m -> new CondParseLogs(CondParseLogs.Kind.DOES_NOT_CONTAIN, Expressions.fromParsed(m.getExpression(0))));
+        // Ternary: set var to A if condition otherwise B / else B (before do-if so "otherwise" is matched)
+        registerEffectFirst("set %variable% to < if > if < otherwise > otherwise <>", m -> buildTernarySet(m));
+        registerEffectFirst("set %variable% to < if > if < else > else <>", m -> buildTernarySet(m));
         registerEffect("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerEffect("log %string%", m -> new LogStatement(m.getString(0)));
         registerEffect("send %string%", m -> new SendMessageStatement(m.getString(0)));
@@ -153,8 +167,13 @@ public final class SyntaxRegistry {
                 cond = "true".equals(condStr.trim()) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
             }
             if (cond == null) return null;
-            Object value = valueStr != null ? CoreTypes.get().parse("object", valueStr.trim(), ParseContext.DEFAULT) : null;
-            if (value == null && valueStr != null && !valueStr.isBlank()) value = valueStr.trim();
+            Object value = null;
+            if (valueStr != null && !valueStr.isBlank()) {
+                String v = valueStr.trim();
+                value = CoreTypes.get().parse("boolean", v, ParseContext.DEFAULT);
+                if (value == null) value = CoreTypes.get().parse("object", v, ParseContext.DEFAULT);
+                if (value == null) value = v;
+            }
             return new DoIfStatement(cond, new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(value)));
         });
         // Random number(s) / integer(s) — before generic set to object (two forms: with and without amount)
@@ -247,6 +266,7 @@ public final class SyntaxRegistry {
         registerStatement("broadcast %string%", m -> new BroadcastStatement(m.getString(0)));
         registerStatement("log %string%", m -> new LogStatement(m.getString(0)));
         registerStatement("send %string%", m -> new SendMessageStatement(m.getString(0)));
+        // Do-if first so "set x to y if cond" matches before ternary or set-to-object
         registerStatementFirst("set %variable% to < if > if <>", m -> {
             String valueStr = m.getString(1);
             String condStr = m.getString(2);
@@ -256,10 +276,17 @@ public final class SyntaxRegistry {
                 cond = "true".equals(condStr.trim()) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
             }
             if (cond == null) return null;
-            Object value = valueStr != null ? CoreTypes.get().parse("object", valueStr.trim(), ParseContext.DEFAULT) : null;
-            if (value == null && valueStr != null && !valueStr.isBlank()) value = valueStr.trim();
+            Object value = null;
+            if (valueStr != null && !valueStr.isBlank()) {
+                String v = valueStr.trim();
+                value = CoreTypes.get().parse("boolean", v, ParseContext.DEFAULT);
+                if (value == null) value = CoreTypes.get().parse("object", v, ParseContext.DEFAULT);
+                if (value == null) value = v;
+            }
             return new DoIfStatement(cond, new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(value)));
         });
+        registerStatementFirst("set %variable% to < if > if < otherwise > otherwise <>", m -> buildTernarySet(m));
+        registerStatementFirst("set %variable% to < if > if < else > else <>", m -> buildTernarySet(m));
         // Random number(s) / integer(s) — before generic set to object
         registerStatementFirst("set %variable% to random number (from|between) %number% (to|and) %number%", m -> {
             Object v = m.getExpression(0);
@@ -403,5 +430,40 @@ public final class SyntaxRegistry {
             }
         }
         return null;
+    }
+
+    /** Build SetVariableStatement with ExprTernary for "set var to A if cond otherwise B" / "... else B". */
+    private static ch.njol.skript.core.lang.Statement buildTernarySet(CoreSkriptPattern.CoreMatchResult m) {
+        String value1Str = m.getString(1);
+        String condStr = m.getString(2);
+        String value2Str = m.getString(3);
+        if (condStr == null || condStr.isBlank()) return null;
+        ch.njol.skript.core.condition.Condition cond = get().parseCondition(condStr.trim());
+        if (cond == null && ("true".equals(condStr.trim()) || "false".equals(condStr.trim()))) {
+            cond = "true".equals(condStr.trim()) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+        }
+        if (cond == null) return null;
+        Expression<Object> thenExpr = Expressions.fromParsed(parseValue(value1Str));
+        Expression<Object> elseExpr = Expressions.fromParsed(parseValue(value2Str));
+        return new SetVariableStatement(m.getExpression(0), new ExprTernary(cond, thenExpr, elseExpr));
+    }
+
+    private static Object parseValue(String valueStr) {
+        if (valueStr == null || valueStr.isBlank()) return null;
+        String v = valueStr.trim();
+        Object value = CoreTypes.get().parse("boolean", v, ParseContext.DEFAULT);
+        if (value == null) value = CoreTypes.get().parse("object", v, ParseContext.DEFAULT);
+        if (value == null) value = CoreTypes.get().parse("number", v, ParseContext.DEFAULT);
+        if (value == null) value = v;
+        return value;
+    }
+
+    /** So "assert {_x} is false" compares to Boolean false, not the string "false". Handles parsed null (e.g. on Fabric). */
+    private static ch.njol.skript.core.lang.Expression<Object> normalizeBooleanLiteral(Object parsed) {
+        if (parsed == null) return Expressions.fromParsed(null);
+        String s = String.valueOf(parsed).trim();
+        if ("true".equalsIgnoreCase(s)) return Expressions.fromParsed(Boolean.TRUE);
+        if ("false".equalsIgnoreCase(s)) return Expressions.fromParsed(Boolean.FALSE);
+        return Expressions.fromParsed(parsed);
     }
 }

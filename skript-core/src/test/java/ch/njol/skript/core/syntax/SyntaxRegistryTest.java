@@ -6,6 +6,7 @@ import ch.njol.skript.core.conditions.CondCompare;
 import ch.njol.skript.core.conditions.CondContains;
 import ch.njol.skript.core.conditions.CondIsSet;
 import ch.njol.skript.core.lang.BroadcastStatement;
+import ch.njol.skript.core.lang.DoIfStatement;
 import ch.njol.skript.core.lang.LogStatement;
 import ch.njol.skript.core.lang.SetVariableStatement;
 import ch.njol.skript.core.lang.Statement;
@@ -62,6 +63,15 @@ class SyntaxRegistryTest {
         SyntaxRegistry reg = SyntaxRegistry.get();
         assertInstanceOf(CondIsSet.class, reg.parseCondition("{_x} is set"));
         assertInstanceOf(CondContains.class, reg.parseCondition("\"hello\" contains \"ell\""));
-        assertInstanceOf(CondCompare.class, reg.parseCondition("1 is 1"));
+        // "1 is 1" / "1 is 2" are literals -> CondTrue/CondFalse; use "2 is 3" for CondCompare
+        assertInstanceOf(CondCompare.class, reg.parseCondition("2 is 3"));
+    }
+
+    @Test
+    void parseDoIfStatement() {
+        SyntaxRegistry reg = SyntaxRegistry.get();
+        Statement st = reg.parseStatement("set {_false} to false if 1 is 1");
+        assertNotNull(st);
+        assertInstanceOf(DoIfStatement.class, st);
     }
 }

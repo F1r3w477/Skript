@@ -23,6 +23,9 @@ public final class CondParseLogs implements Condition {
     @Override
     public boolean check(ExecutionContext ctx) {
         String logs = ParseLogsHolder.get();
+        if (Boolean.getBoolean("skript.fabric.trace")) {
+            ctx.getLogger().info("[FabricTrace] CondParseLogs.check: kind=" + kind + ", logs=" + (logs != null ? "\"" + logs + "\"" : "null"));
+        }
         switch (kind) {
             case IS_SET:
                 return logs != null && !logs.isEmpty();

@@ -385,6 +385,11 @@ tasks.named('quickTestFabric') {
 	dependsOn ':skript-fabric:build'
 	// Avoid OOM (exit 137) when running full Fabric test suite
 	jvmArgs '-Xmx3g', '-Xms1g'
+	// Pass through to PlatformMain so it can forward to the Fabric subprocess
+	if (System.getProperty('skript.testing.includeTest') != null)
+		systemProperty 'skript.testing.includeTest', System.getProperty('skript.testing.includeTest')
+	if (System.getProperty('skript.fabric.trace') != null)
+		systemProperty 'skript.fabric.trace', System.getProperty('skript.fabric.trace')
 }
 
 // custom test task

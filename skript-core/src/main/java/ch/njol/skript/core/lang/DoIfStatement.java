@@ -17,7 +17,16 @@ public final class DoIfStatement implements Statement {
 
     @Override
     public void run(ExecutionContext ctx) {
-        if (condition != null && condition.check(ctx) && inner != null) {
+        boolean trace = Boolean.getBoolean("skript.fabric.trace");
+        if (condition == null) {
+            if (trace) ctx.getLogger().info("[FabricTrace] DoIfStatement.run: condition is null, skipping");
+            return;
+        }
+        boolean pass = condition.check(ctx);
+        if (trace) {
+            ctx.getLogger().info("[FabricTrace] DoIfStatement.run: condition.check=" + pass + ", inner=" + (inner != null));
+        }
+        if (pass && inner != null) {
             inner.run(ctx);
         }
     }

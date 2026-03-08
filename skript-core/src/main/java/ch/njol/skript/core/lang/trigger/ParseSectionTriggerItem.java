@@ -28,9 +28,15 @@ public final class ParseSectionTriggerItem extends CoreTriggerItem {
 
     @Override
     public CoreTriggerItem run(ExecutionContext ctx) {
+        if (Boolean.getBoolean("skript.fabric.trace")) {
+            ctx.getLogger().info("[FabricTrace] ParseSectionTriggerItem.run: bodyEmpty=" + bodyEmpty);
+        }
         ParseLogsHolder.clear();
         if (bodyEmpty) {
             ParseLogsHolder.set(EMPTY_PARSE_ERROR);
+            if (Boolean.getBoolean("skript.fabric.trace")) {
+                ctx.getLogger().info("[FabricTrace] ParseSectionTriggerItem.run: set EMPTY_PARSE_ERROR, returning next");
+            }
             return next;
         }
         if (body != null) {
