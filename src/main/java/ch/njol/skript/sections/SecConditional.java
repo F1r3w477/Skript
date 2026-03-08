@@ -309,7 +309,23 @@ public class SecConditional extends Section {
 				sectionToRun.last.setNext(skippedNext);
 			return sectionToRun.first != null ? sectionToRun.first : skippedNext;
 		} else {
-			return getActualNext();
+			// conditions failed — skip to next branch (else if / else) instead of running then
+			// Use getActualNext() so we don't skip over ELSE: getNext()/getSkippedNext() skips all
+			// conditionals until the next IF, which would skip ELSE too for multiline if/then/else.
+			TriggerItem next = getActualNext();
+			while (next != null) {
+				if (next instanceof SecConditional nextSecCond) {
+					if (nextSecCond.type == ConditionalType.ELSE_IF || nextSecCond.type == ConditionalType.ELSE) {
+						return nextSecCond;
+					}
+					if (nextSecCond.type == ConditionalType.THEN) {
+						next = nextSecCond.getActualNext();
+						continue;
+					}
+				}
+				next = next.getNext();
+			}
+			return getSkippedNext();
 		}
 	}
 

@@ -7,20 +7,27 @@ import ch.njol.skript.core.config.ScriptSectionNode;
 import ch.njol.skript.core.condition.Condition;
 import ch.njol.skript.core.condition.CondFalse;
 import ch.njol.skript.core.condition.CondTrue;
-import ch.njol.skript.core.syntax.SyntaxRegistry;
-import ch.njol.skript.core.types.ParseContext;
-import ch.njol.skript.core.types.ParseContextHolder;
-import ch.njol.skript.core.lang.Statement;
-import ch.njol.skript.core.lang.StatementParser;
+import ch.njol.skript.core.conditions.CondCompound;
+import ch.njol.skript.core.lang.ExecutionContext;
 import ch.njol.skript.core.lang.trigger.ConditionalTriggerItem;
 import ch.njol.skript.core.lang.trigger.CoreTriggerItem;
 import ch.njol.skript.core.lang.trigger.LoopNTimesTriggerItem;
+import ch.njol.skript.core.lang.trigger.LoopOverListTriggerItem;
+import ch.njol.skript.core.lang.trigger.ParseSectionTriggerItem;
 import ch.njol.skript.core.lang.trigger.StatementTriggerItem;
 import ch.njol.skript.core.lang.trigger.WhileTriggerItem;
 import ch.njol.skript.core.model.ScriptEventHandler;
 import ch.njol.skript.core.model.ScriptFile;
 import ch.njol.skript.core.patterns.CoreSkriptPattern;
+import ch.njol.skript.core.syntax.SyntaxRegistry;
+import ch.njol.skript.core.variables.VariableScope;
 import ch.njol.skript.platform.SkriptLogger;
+import ch.njol.skript.platform.SkriptPlatform;
+import ch.njol.skript.core.types.CoreTypes;
+import ch.njol.skript.core.types.ParseContext;
+import ch.njol.skript.core.types.ParseContextHolder;
+import ch.njol.skript.core.lang.Statement;
+import ch.njol.skript.core.lang.StatementParser;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -213,10 +220,57 @@ final class SkriptParser {
     }
 
     /**
-     * Builds a trigger chain from a section's children (event body). Supports "if true:", "if false:", and "else:".
+     * Builds a trigger chain from a section's children (event body). Supports "if true:", "if false:", "else:",
+     * multiline "if"/"if any" with "then", "else if", "parse if", etc.
      */
     private static CoreTriggerItem buildBodyChain(ScriptSectionNode bodySection) {
         return buildChain(bodySection.getChildren(), null);
+    }
+
+    /** Evaluate condition at parse time for parse-if (skip body when false). Returns false on error or when platform null. */
+    private static boolean evaluateConditionAtParseTime(Condition cond) {
+        SkriptPlatform platform = SkriptBootstrap.getPlatform();
+        if (platform == null || cond == null) return false;
+        try {
+            ExecutionContext ctx = new ExecutionContext(
+                platform.getLogger(),
+                new RuntimeEventContext("parse", "parse"),
+                new VariableScope(),
+                null,
+                null
+            );
+            return cond.check(ctx);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Build compound condition from multiline if/if any section (each child entry = one condition line). */
+    private static Condition parseMultilineConditions(ScriptSectionNode section, boolean ifAny) {
+        List<Condition> list = new ArrayList<>();
+        for (ScriptNode child : section.getChildren()) {
+            if (child instanceof ScriptEntryNode entry) {
+                String line = entry.getKey().trim();
+                if (line.isEmpty()) continue;
+                Condition c = SyntaxRegistry.get().parseCondition(line);
+                if (c == null && ("true".equals(line) || "false".equals(line))) {
+                    c = "true".equals(line) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+                if (c != null) list.add(c);
+            }
+        }
+        if (list.isEmpty()) return CondFalse.INSTANCE;
+        if (list.size() == 1) return list.get(0);
+        return new CondCompound(list, ifAny ? CondCompound.Operator.OR : CondCompound.Operator.AND);
+    }
+
+    private static final String THEN_KEY = "then";
+    private static final String THEN_RUN_KEY = "then run";
+
+    private static boolean isThenSection(ScriptNode node) {
+        if (!(node instanceof ScriptSectionNode s)) return false;
+        String k = s.getKey().trim().toLowerCase(Locale.ROOT);
+        return THEN_KEY.equals(k) || k.startsWith(THEN_RUN_KEY);
     }
 
     private static CoreTriggerItem buildChain(List<ScriptNode> nodes, CoreTriggerItem nextAfter) {
@@ -231,6 +285,68 @@ final class SkriptParser {
         if (first instanceof ScriptSectionNode section) {
             String key = section.getKey().trim();
             String keyLower = key.toLowerCase(Locale.ROOT);
+
+            // else: run else body then continue
+            if ("else".equals(keyLower)) {
+                CoreTriggerItem afterElse = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                return buildChain(section.getChildren(), afterElse);
+            }
+
+            // Multiline "if" or "if any" with "then"
+            if (("if".equals(keyLower) || "if any".equals(keyLower)) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
+                boolean ifAny = "if any".equals(keyLower);
+                Condition compound = parseMultilineConditions(section, ifAny);
+                ScriptSectionNode thenSection = (ScriptSectionNode) nodes.get(1);
+                CoreTriggerItem elseChain = buildChain(nodes.subList(2, nodes.size()), nextAfter);
+                CoreTriggerItem thenChain = buildChain(thenSection.getChildren(), nextAfter);
+                return new ConditionalTriggerItem(compound, thenChain, elseChain);
+            }
+
+            // Multiline "else if" or "else if any" with "then"
+            if ((keyLower.equals("else if") || keyLower.equals("else if any")) && nodes.size() >= 2 && isThenSection(nodes.get(1))) {
+                boolean ifAny = keyLower.equals("else if any");
+                Condition compound = parseMultilineConditions(section, ifAny);
+                ScriptSectionNode thenSection = (ScriptSectionNode) nodes.get(1);
+                CoreTriggerItem elseChain = buildChain(nodes.subList(2, nodes.size()), nextAfter);
+                CoreTriggerItem thenChain = buildChain(thenSection.getChildren(), nextAfter);
+                return new ConditionalTriggerItem(compound, thenChain, elseChain);
+            }
+
+            // else parse if <condition>:
+            if (keyLower.startsWith("else parse if ")) {
+                String condPart = key.substring("else parse if ".length()).trim();
+                Condition parseIfCond = SyntaxRegistry.get().parseCondition(condPart);
+                if (parseIfCond == null && ("true".equals(condPart) || "false".equals(condPart))) {
+                    parseIfCond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+                CoreTriggerItem elseChain = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain;
+                if (parseIfCond != null && !evaluateConditionAtParseTime(parseIfCond)) {
+                    bodyChain = elseChain;
+                } else {
+                    bodyChain = buildChain(section.getChildren(), nextAfter);
+                }
+                if (parseIfCond != null) {
+                    return new ConditionalTriggerItem(parseIfCond, bodyChain != null ? bodyChain : nextAfter, elseChain);
+                }
+                return bodyChain != null ? bodyChain : elseChain;
+            }
+
+            // Single-line else if <condition>:
+            if (keyLower.startsWith("else if ") && key.length() > "else if ".length()) {
+                String condPart = key.substring("else if ".length()).trim();
+                Condition elseIfCond = SyntaxRegistry.get().parseCondition(condPart);
+                if (elseIfCond == null && ("true".equals(condPart) || "false".equals(condPart))) {
+                    elseIfCond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
+                }
+                if (elseIfCond != null) {
+                    CoreTriggerItem elseChain = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                    CoreTriggerItem thenChain = buildChain(section.getChildren(), nextAfter);
+                    return new ConditionalTriggerItem(elseIfCond, thenChain, elseChain);
+                }
+            }
+
+            // Simple if <condition>: with optional else
             Condition cond = null;
             if (keyLower.startsWith("if ")) {
                 String condPart = key.substring(2).trim();
@@ -249,12 +365,9 @@ final class SkriptParser {
                     consumed = 2;
                 }
                 CoreTriggerItem nextAfterThis = buildChain(nodes.subList(consumed, nodes.size()), nextAfter);
-                CoreTriggerItem thenChain = buildChain(thenNodes, nextAfterThis);
+                CoreTriggerItem thenChain = buildChain(thenNodes, nextAfter);
                 CoreTriggerItem elseChain = buildChain(elseNodes, nextAfterThis);
                 return new ConditionalTriggerItem(cond, thenChain, elseChain);
-            }
-            if ("else".equals(keyLower)) {
-                return buildChain(nodes.subList(1, nodes.size()), nextAfter);
             }
             if (keyLower.startsWith("while ")) {
                 String condPart = key.substring(6).trim();
@@ -270,11 +383,13 @@ final class SkriptParser {
                     return whileItem;
                 }
             }
-            // parse: run section body once (optionally capture logs later)
+            // parse: run section body once, clear ParseLogsHolder before
             if ("parse".equals(keyLower)) {
                 CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
-                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
-                return bodyChain != null ? bodyChain : nextAfterThis;
+                List<ScriptNode> children = section.getChildren();
+                CoreTriggerItem bodyChain = buildChain(children, nextAfterThis);
+                boolean bodyEmpty = children.isEmpty() || (bodyChain == nextAfterThis);
+                return new ParseSectionTriggerItem(bodyChain, nextAfterThis, bodyEmpty);
             }
             // loop N times:
             if (keyLower.matches("loop\\s+\\d+\\s+times")) {
@@ -296,19 +411,24 @@ final class SkriptParser {
                 CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
                 return bodyChain != null ? bodyChain : nextAfterThis;
             }
-            // parse if <condition>: run body once when condition is true
+            // parse if <condition>: run body once when condition is true; when false at parse time do not parse body
             if (keyLower.startsWith("parse if ")) {
                 String condPart = key.substring("parse if ".length()).trim();
                 Condition parseIfCond = SyntaxRegistry.get().parseCondition(condPart);
                 if (parseIfCond == null && ("true".equals(condPart) || "false".equals(condPart))) {
                     parseIfCond = "true".equals(condPart) ? CondTrue.INSTANCE : CondFalse.INSTANCE;
                 }
-                CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
-                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
-                if (parseIfCond != null) {
-                    return new ConditionalTriggerItem(parseIfCond, bodyChain != null ? bodyChain : nextAfterThis, nextAfterThis);
+                CoreTriggerItem elseChain = buildChain(nodes.subList(1, nodes.size()), nextAfter);
+                CoreTriggerItem bodyChain;
+                if (parseIfCond != null && !evaluateConditionAtParseTime(parseIfCond)) {
+                    bodyChain = elseChain;
+                } else {
+                    bodyChain = buildChain(section.getChildren(), nextAfter);
                 }
-                return bodyChain != null ? bodyChain : nextAfterThis;
+                if (parseIfCond != null) {
+                    return new ConditionalTriggerItem(parseIfCond, bodyChain != null ? bodyChain : nextAfter, elseChain);
+                }
+                return bodyChain != null ? bodyChain : elseChain;
             }
             // if running minecraft "version": / running below minecraft "version" (stub: run body)
             if (keyLower.startsWith("if running minecraft ") || keyLower.contains("running below minecraft")) {
@@ -322,11 +442,17 @@ final class SkriptParser {
                 CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
                 return bodyChain != null ? bodyChain : nextAfterThis;
             }
-            // loop 1, 2, and 3: / loop {_x}, {_y} and {_z}: (stub: run body once)
+            // loop 1, 2, and 3: / loop {_x}, {_y} and {_z}: iterate with loop-value
             if (keyLower.startsWith("loop ") && key.contains(",")) {
+                String listPart = key.substring(5).trim();
+                Object parsed = CoreTypes.get().parse("objects", listPart, ParseContextHolder.get());
+                @SuppressWarnings("unchecked")
+                List<Object> elements = parsed instanceof List ? (List<Object>) parsed : List.of();
                 CoreTriggerItem nextAfterThis = buildChain(nodes.subList(1, nodes.size()), nextAfter);
-                CoreTriggerItem bodyChain = buildChain(section.getChildren(), nextAfterThis);
-                return bodyChain != null ? bodyChain : nextAfterThis;
+                LoopOverListTriggerItem loopItem = new LoopOverListTriggerItem(elements, nextAfterThis);
+                CoreTriggerItem bodyChain = buildChain(section.getChildren(), new LoopOverListTriggerItem.Tail(loopItem));
+                loopItem.setBodyFirst(bodyChain);
+                return loopItem;
             }
             // loop blocks within ... / loop all itemtypes / any other "loop ...:" (stub: run body once)
             if (keyLower.startsWith("loop ")) {

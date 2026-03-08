@@ -154,8 +154,20 @@ public final class CoreSkriptPattern {
             } else if ("number".equalsIgnoreCase(typeName)) {
                 String num = matchNumber(expr);
                 if (num == null) {
-                    if (nullable) { consumed = ""; toStore = null; }
-                    else return null;
+                    // Allow variable references in number slots (e.g. "random number between {_null} and 1")
+                    String token = matchVariableToken(expr);
+                    if (token != null) {
+                        int start = expr.indexOf(token);
+                        if (start < 0) start = 0;
+                        consumed = expr.substring(start, start + token.length());
+                        Object parsed = CoreTypes.get().parse("variable", token, ParseContextHolder.get());
+                        toStore = parsed != null ? parsed : new VariableRef(token);
+                    } else if (nullable) {
+                        consumed = "";
+                        toStore = null;
+                    } else {
+                        return null;
+                    }
                 } else {
                     int start = 0;
                     while (start < expr.length() && Character.isWhitespace(expr.charAt(start))) start++;
@@ -218,6 +230,11 @@ public final class CoreSkriptPattern {
 
         private static String matchNumber(String expr) {
             String t = expr.trim();
+            if (t.isEmpty()) return null;
+            String upper = t.toUpperCase(Locale.ROOT);
+            if (upper.startsWith("NAN")) return upper.startsWith("NAN VALUE") ? t.substring(0, 9) : t.substring(0, 3);
+            if (upper.startsWith("INFINITY")) return upper.startsWith("INFINITY VALUE") ? t.substring(0, 14) : t.substring(0, 8);
+            if (upper.startsWith("-INFINITY")) return upper.startsWith("-INFINITY VALUE") ? t.substring(0, 15) : t.substring(0, 9);
             int i = 0;
             if (t.startsWith("-") || t.startsWith("+")) i = 1;
             while (i < t.length() && (Character.isDigit(t.charAt(i)) || t.charAt(i) == '.')) i++;
@@ -239,6 +256,11 @@ public final class CoreSkriptPattern {
         }
 
         private static Object parseNumber(String s) {
+            if (s == null) return null;
+            String u = s.trim().toUpperCase(Locale.ROOT);
+            if ("NAN".equals(u) || "NAN VALUE".equals(u)) return Double.NaN;
+            if ("INFINITY".equals(u) || "INFINITY VALUE".equals(u)) return Double.POSITIVE_INFINITY;
+            if ("-INFINITY".equals(u) || "-INFINITY VALUE".equals(u)) return Double.NEGATIVE_INFINITY;
             try {
                 if (s.contains(".")) return Double.parseDouble(s);
                 return Long.parseLong(s);
@@ -374,6 +396,14 @@ public final class CoreSkriptPattern {
 
         @Override
         String match(String expr, CoreMatchResult result) {
+            if (delimiter.isEmpty()) {
+                // Rest of line: capture remainder as one string (for "set x to y if <condition>")
+                String captured = expr.trim();
+                if (index >= 0 && result.expressions != null && index < result.expressions.length) {
+                    result.expressions[index] = captured;
+                }
+                return next != null ? next.match("", result) : "";
+            }
             String exprLower = expr.toLowerCase(Locale.ROOT);
             String delimLower = delimiter.toLowerCase(Locale.ROOT);
             int pos = exprLower.indexOf(delimLower);

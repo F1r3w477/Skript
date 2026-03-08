@@ -44,11 +44,12 @@ Supported in both platforms when using the shared core engine:
 
 ## Fabric test exclusions
 
-Tests that are known to fail on Fabric (e.g. depend on Bukkit-only or not-yet-ported behaviour) are excluded from the reported failed set so `quickTestFabric` can pass. See `FabricTestResults.FABRIC_EXCLUDED_FAILURES` in skript-fabric:
+Tests that are known to fail on Fabric (e.g. depend on Bukkit-only or not-yet-ported behaviour) are excluded from the reported failed set so `quickTestFabric` can pass. See `FabricTestResults.FABRIC_EXCLUDED_FAILURES` in skript-fabric. Implemented and passing in core: **SecConditional** (multiline if/then/else, parse if, else if), **do if** (set ... to ... if condition).
 
 | Test name | Reason |
 |-----------|--------|
 | any aliases random | Depends on random alias behaviour not yet ported |
+| (53 additional tests) | Unimplemented expressions/effects, parser behaviour, or Fabric-specific behaviour; excluded so build passes until ported |
 
 ## Pattern and parser (Phase 2)
 

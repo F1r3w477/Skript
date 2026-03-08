@@ -23,6 +23,11 @@ public final class SetVariableStatement implements Statement {
     public void run(ExecutionContext ctx) {
         if (!(variableRef instanceof VariableRef ref)) return;
         Object value = valueExpr != null ? valueExpr.get(ctx) : null;
-        ctx.getVariableScope().set(ref.getName(), value);
+        var scope = ctx.getVariableScope();
+        if (value == null) {
+            scope.remove(ref.getName());
+        } else {
+            scope.set(ref.getName(), value);
+        }
     }
 }

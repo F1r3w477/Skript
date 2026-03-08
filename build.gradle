@@ -383,6 +383,8 @@ tasks.register('conversionReport') {
 tasks.named('quickTestFabric') {
 	systemProperty 'skript.test.remake', 'true'
 	dependsOn ':skript-fabric:build'
+	// Avoid OOM (exit 137) when running full Fabric test suite
+	jvmArgs '-Xmx3g', '-Xms1g'
 }
 
 // custom test task

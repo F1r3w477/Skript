@@ -39,8 +39,10 @@ public final class LoopNTimesTriggerItem extends CoreTriggerItem {
         }
         if (remaining <= 0) {
             ctx.setTemporary(stateKey, null);
+            ctx.setTemporary("loop_value", null);
             return nextAfter;
         }
+        ctx.setTemporary("loop_value", times - remaining + 1);
         return bodyFirst;
     }
 
@@ -54,9 +56,11 @@ public final class LoopNTimesTriggerItem extends CoreTriggerItem {
         remaining--;
         if (remaining <= 0) {
             ctx.setTemporary(stateKey, null);
+            ctx.setTemporary("loop_value", null);
             return nextAfter;
         }
         ctx.setTemporary(stateKey, remaining);
+        ctx.setTemporary("loop_value", times - remaining + 1);
         return bodyFirst;
     }
 

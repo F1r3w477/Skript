@@ -19,6 +19,9 @@ public final class EventValues {
      */
     public static Object resolve(Object value, ExecutionContext ctx) {
         if (value instanceof EventValue ev) {
+            if (ev == EventValue.LOOP_VALUE) {
+                return ctx != null ? ctx.getTemporary("loop_value") : null;
+            }
             return ev.getFrom(ctx != null ? ctx.getEventContext() : null);
         }
         if (value instanceof VariableRef ref) {

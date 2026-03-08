@@ -1,5 +1,6 @@
 package ch.njol.skript.platform;
 
+import ch.njol.skript.core.syntax.SyntaxRegistry;
 import ch.njol.skript.core.types.CoreTypes;
 
 import java.nio.file.Path;
@@ -86,10 +87,26 @@ public interface SkriptPlatform {
     }
 
     /**
+     * Whether a plugin (or mod) with the given name is enabled. Used for "parse if plugin X is enabled".
+     * Default false; platforms override (e.g. Fabric returns true for "Skript").
+     */
+    default boolean isPluginEnabled(String name) {
+        return false;
+    }
+
+    /**
      * Register platform-specific types (e.g. "player") with the core type system.
      * Called by the engine before loading scripts so that patterns like %player% can be parsed.
      */
     default void registerTypes(CoreTypes types) {
+    }
+
+    /**
+     * Register platform-specific effects (e.g. spawn, kill, set block). Called before loading scripts.
+     * Platforms add their implementations; use {@link SyntaxRegistry#registerEffectFirst} so they
+     * take precedence over core NoOp fallbacks.
+     */
+    default void registerPlatformEffects(SyntaxRegistry registry) {
     }
 }
 

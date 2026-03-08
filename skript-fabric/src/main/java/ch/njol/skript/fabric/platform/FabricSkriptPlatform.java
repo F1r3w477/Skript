@@ -1,10 +1,15 @@
 package ch.njol.skript.fabric.platform;
 
+import ch.njol.skript.core.syntax.SyntaxRegistry;
 import ch.njol.skript.core.types.CoreClassInfo;
 import ch.njol.skript.core.types.CoreTypes;
 import ch.njol.skript.core.types.ParseContext;
 import ch.njol.skript.platform.SkriptCommandExecutor;
 import ch.njol.skript.platform.SkriptLogger;
+import ch.njol.skript.fabric.effects.FabricClearEntityStatement;
+import ch.njol.skript.fabric.effects.FabricKillStatement;
+import ch.njol.skript.fabric.effects.FabricSetBlockStatement;
+import ch.njol.skript.fabric.effects.FabricSpawnStatement;
 import ch.njol.skript.platform.SkriptPlatform;
 import ch.njol.skript.platform.SkriptPlayerInfo;
 import ch.njol.skript.platform.SkriptScheduler;
@@ -90,6 +95,12 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
     }
 
     @Override
+    public boolean isPluginEnabled(String name) {
+        if (name == null || name.isBlank()) return false;
+        return "Skript".equalsIgnoreCase(name) || "skript-fabric".equalsIgnoreCase(name);
+    }
+
+    @Override
     public void registerCommand(String name, String description, SkriptCommandExecutor executor) {
         if ("skript".equalsIgnoreCase(name)) {
             this.skriptCommandExecutor = executor;
@@ -109,6 +120,13 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
      */
     public void setServer(MinecraftServer server) {
         this.server = server;
+    }
+
+    /**
+     * The current Minecraft server; null before server start.
+     */
+    public MinecraftServer getServer() {
+        return server;
     }
 
     @Override
@@ -157,6 +175,22 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
         } catch (IllegalArgumentException e) {
             logger.info("[send to " + player.getName() + "] " + message);
         }
+    }
+
+    @Override
+    public void registerPlatformEffects(SyntaxRegistry registry) {
+        registry.registerEffectFirst("spawn %object% at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerEffectFirst("spawn < at > at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerEffectFirst("set block at %object% to %object%", m -> new FabricSetBlockStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerEffectFirst("kill %object%", m -> new FabricKillStatement(m.getExpression(0)));
+        registry.registerEffectFirst("clear entity within %object%", m -> new FabricClearEntityStatement(m.getExpression(0)));
+        registry.registerEffectFirst("clear all entities", m -> new FabricClearEntityStatement(null));
+        registry.registerStatementFirst("spawn %object% at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerStatementFirst("spawn < at > at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerStatementFirst("set block at %object% to %object%", m -> new FabricSetBlockStatement(m.getExpression(0), m.getExpression(1)));
+        registry.registerStatementFirst("kill %object%", m -> new FabricKillStatement(m.getExpression(0)));
+        registry.registerStatementFirst("clear entity within %object%", m -> new FabricClearEntityStatement(m.getExpression(0)));
+        registry.registerStatementFirst("clear all entities", m -> new FabricClearEntityStatement(null));
     }
 
     @Override

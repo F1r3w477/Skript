@@ -60,13 +60,30 @@ public class ExprRandomNumber extends SimpleExpression<Number> {
 		if (upperNumber == null || lowerNumber == null || !Double.isFinite(lowerNumber.doubleValue()) || !Double.isFinite(upperNumber.doubleValue()))
 			return new Number[0];
 
-		Integer amount = this.amount == null ? Integer.valueOf(1) : this.amount.getSingle(event);
-		if (amount == null || amount <= 0)
+		Number amountNum = this.amount == null ? Integer.valueOf(1) : this.amount.getSingle(event);
+		if (amountNum == null || amountNum.intValue() <= 0
+				|| Double.isNaN(amountNum.doubleValue()) || !Double.isFinite(amountNum.doubleValue()))
 			return new Number[0];
+		int amount = amountNum.intValue();
 
 		double lower = Math.min(lowerNumber.doubleValue(), upperNumber.doubleValue());
 		double upper = Math.max(lowerNumber.doubleValue(), upperNumber.doubleValue());
 		Random random = ThreadLocalRandom.current();
+
+		// When range is a single point, return that value (deterministic; fixes "0 and 0" -> 0)
+		if (lower == upper) {
+			if (isInteger) {
+				Long v = Long.valueOf((long) Math.floor(lower));
+				Long[] longs = new Long[amount];
+				Arrays.fill(longs, v);
+				return longs;
+			}
+			Double v = Double.valueOf(lower);
+			Double[] doubles = new Double[amount];
+			Arrays.fill(doubles, v);
+			return doubles;
+		}
+
 		if (isInteger) {
 			Long[] longs = new Long[amount];
 			long floored_upper = Math2.floor(upper);

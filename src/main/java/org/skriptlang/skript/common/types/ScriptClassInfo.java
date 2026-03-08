@@ -70,7 +70,9 @@ public class ScriptClassInfo extends ClassInfo<Script> {
 			@Nullable File file = script.getConfig().getFile();
 			if (file == null)
 				return script.getConfig().getFileName();
-			return path.relativize(file.toPath().toAbsolutePath()).toString();
+			Path relative = path.relativize(file.toPath().toAbsolutePath());
+			// Use forward slashes so string form matches test expectations across platforms
+			return relative.toString().replace('\\', '/');
 		}
 
 		@Override

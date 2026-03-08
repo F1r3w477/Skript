@@ -43,6 +43,8 @@ public class ExprTimeSince extends SimplePropertyExpression<Date, Timespan> {
 
 	@Override
 	public @Nullable Timespan convert(Date date) {
+		if (date == null)
+			return null;
 		Date now = Date.now();
 		// Ensure that we have a valid date
 		// Since should have a date in the past ( -1 or 0 )

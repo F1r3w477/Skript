@@ -9,7 +9,11 @@ public enum EventValue {
     /** Resolves to context.getPlayer() */
     PLAYER,
     /** Resolves to context.getLocation() */
-    LOCATION;
+    LOCATION,
+    /** Resolves to context.getEntity() */
+    ENTITY,
+    /** Resolves from ExecutionContext temporary "loop_value" */
+    LOOP_VALUE;
 
     /**
      * Resolve this event value from the given context. Returns null if context is null
@@ -20,6 +24,8 @@ public enum EventValue {
         return switch (this) {
             case PLAYER -> context.getPlayer();
             case LOCATION -> context.getLocation();
+            case ENTITY -> context.getEntity();
+            case LOOP_VALUE -> null; // resolved from ExecutionContext, not RuntimeEventContext
         };
     }
 }

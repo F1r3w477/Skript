@@ -17,6 +17,7 @@
   "skriptTarget": "mods/Skript-Fabric.jar",
   "skriptJarPath": "skript-fabric/build/libs/Skript-Fabric.jar",
   "commandLine": [
+    "-Xmx6g",
     "-Dcom.mojang.eula.agree=true",
     "-jar", "fabric-server.jar", "--nogui"
   ]

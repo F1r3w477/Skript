@@ -2,6 +2,7 @@ package ch.njol.skript.core;
 
 import ch.njol.skript.core.config.ScriptConfig;
 import ch.njol.skript.core.model.ScriptFile;
+import ch.njol.skript.core.syntax.SyntaxRegistry;
 import ch.njol.skript.core.types.CoreTypes;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.platform.SkriptPlatform;
@@ -40,6 +41,7 @@ final class SkriptEngine {
 
     void loadScripts() {
         platform.registerTypes(CoreTypes.get());
+        platform.registerPlatformEffects(SyntaxRegistry.get());
         Path scriptsDir = platform.getScriptsDirectory();
         logger.info("Looking for scripts in: " + scriptsDir);
 

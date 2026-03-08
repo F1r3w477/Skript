@@ -23,6 +23,10 @@ public final class CondCompare implements Condition {
     public boolean check(ExecutionContext ctx) {
         Object a = leftExpr != null ? leftExpr.get(ctx) : null;
         Object b = rightExpr != null ? rightExpr.get(ctx) : null;
+        // Numeric equality so 0.0 and 0 compare equal (e.g. "assert {_num} is 0" after random number between 0 and 0)
+        if (a instanceof Number na && b instanceof Number nb) {
+            return na.doubleValue() == nb.doubleValue() && Double.isFinite(na.doubleValue()) && Double.isFinite(nb.doubleValue());
+        }
         return Objects.equals(a, b);
     }
 }

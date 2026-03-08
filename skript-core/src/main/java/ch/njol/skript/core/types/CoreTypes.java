@@ -1,5 +1,6 @@
 package ch.njol.skript.core.types;
 
+import ch.njol.skript.core.event.EventValue;
 import ch.njol.skript.core.variables.VariableRef;
 
 import java.util.ArrayList;
@@ -51,7 +52,13 @@ public final class CoreTypes {
             if ("false".equals(t)) return false;
             return null;
         }));
-        register(new CoreClassInfo<>("object", Object.class, (s, ctx) -> s));
+        register(new CoreClassInfo<>("object", Object.class, (s, ctx) -> {
+            if (s == null) return null;
+            String t = s.trim();
+            if ("loop-value".equalsIgnoreCase(t)) return EventValue.LOOP_VALUE;
+            if ("event-entity".equalsIgnoreCase(t)) return EventValue.ENTITY;
+            return s;
+        }));
         register(new CoreClassInfo<>("objects", List.class, (s, ctx) -> parseListLiteral(s)));
         register(new CoreClassInfo<>("variable", VariableRef.class, (s, ctx) -> {
             if (s == null || s.isEmpty()) return null;

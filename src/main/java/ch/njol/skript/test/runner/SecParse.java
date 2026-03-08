@@ -1,7 +1,9 @@
 package ch.njol.skript.test.runner;
 
 import ch.njol.skript.Skript;
+import ch.njol.skript.config.Node;
 import ch.njol.skript.config.SectionNode;
+import ch.njol.skript.core.parse.ParseLogsHolder;
 import ch.njol.skript.doc.Description;
 import ch.njol.skript.doc.Name;
 import ch.njol.skript.doc.NoDoc;
@@ -32,9 +34,18 @@ public class SecParse extends Section {
 
 	@Override
 	public boolean init(Expression<?>[] exprs, int matchedPattern, Kleenean isDelayed, ParseResult parseResult, SectionNode sectionNode, List<TriggerItem> triggerItems) {
-		if (Iterables.size(sectionNode) == 0) {
-			Skript.error("A parse section must contain code");
-			return false;
+		// Empty or comment-only section: treat as error but still load so script runs and test can assert on parse logs
+		boolean hasCode = false;
+		for (Node n : sectionNode) {
+			String key = n.getKey();
+			if (key != null && !key.trim().isEmpty() && !key.trim().startsWith("#")) {
+				hasCode = true;
+				break;
+			}
+		}
+		if (!hasCode) {
+			logs = new String[] { "A parse section must contain code" };
+			return true;
 		}
 
 		RetainingLogHandler handler = SkriptLogger.startRetainingLog();
@@ -55,6 +66,11 @@ public class SecParse extends Section {
 	@Override
 	protected @Nullable TriggerItem walk(Event event) {
 		ExprParseLogs.lastLogs = logs;
+		// Sync to core so "last parse logs" condition (CondParseLogs) sees the same value
+		if (logs != null && logs.length > 0)
+			ParseLogsHolder.set(String.join("\n", logs));
+		else
+			ParseLogsHolder.clear();
 		return walk(event, false);
 	}
 

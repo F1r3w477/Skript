@@ -15,4 +15,11 @@ public interface SkriptWorld {
      * Human-readable name (e.g. "world"). Never null.
      */
     String getName();
+
+    /**
+     * Platform-specific world object (e.g. ServerLevel, World). May be null if not available.
+     */
+    default Object getPlatformWorld() {
+        return null;
+    }
 }
