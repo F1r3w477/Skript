@@ -74,6 +74,7 @@ Supported in both platforms when using the shared core engine:
 
 - Fabric test run produces the same `TestResults` JSON shape as the Bukkit runner; `Environment` and `FabricTestResults` write/read `test_results.json` correctly.
 - `./gradlew quickTestFabric` runs the full test suite; all test failures are reported and the build fails if any test fails.
+- **Fabric harness behaviour:** Tests run after `SERVER_STARTED` so the "load" event has fired and the server is available. After writing `test_results.json`, the process calls `Runtime.getRuntime().halt(0)` so the runner can read results without waiting for Fabric shutdown. `/skript reload` fires the "load" event after reload so scripts using "on load:" run. The Fabric environment may use `server.properties.fabric` (port 35565) to avoid port conflicts when 25565 is in use.
 - Use `./gradlew conversionReport` to track legacy vs core/fabric class counts.
 
 ### Single-test Fabric run and tracing

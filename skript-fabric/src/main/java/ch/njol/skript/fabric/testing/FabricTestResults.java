@@ -61,9 +61,10 @@ public final class FabricTestResults {
 			return;
 		}
 
-		// For now, terminate the server process immediately once results are written
-		// so that the upstream runner can consume them and finish the build.
-		System.exit(0);
+		// Terminate the server process immediately so the upstream runner can
+		// read results and finish. Use halt() to avoid Fabric/Minecraft shutdown
+		// hooks that can prevent System.exit(0) from actually terminating.
+		Runtime.getRuntime().halt(0);
 	}
 
 	/**
