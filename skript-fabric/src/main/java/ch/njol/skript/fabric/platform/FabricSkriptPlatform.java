@@ -6,11 +6,16 @@ import ch.njol.skript.core.types.CoreTypes;
 import ch.njol.skript.core.types.ParseContext;
 import ch.njol.skript.platform.SkriptCommandExecutor;
 import ch.njol.skript.platform.SkriptLogger;
+import ch.njol.skript.core.lang.Expressions;
+import ch.njol.skript.fabric.conditions.CondFabricVectorEquals;
 import ch.njol.skript.fabric.effects.FabricClearEntityStatement;
 import ch.njol.skript.fabric.effects.FabricExecuteConsoleCommandStatement;
 import ch.njol.skript.fabric.effects.FabricKillStatement;
+import ch.njol.skript.fabric.effects.FabricLoadScriptStatement;
 import ch.njol.skript.fabric.effects.FabricSetBlockStatement;
 import ch.njol.skript.fabric.effects.FabricSpawnStatement;
+import ch.njol.skript.fabric.effects.FabricVectorBetweenStatement;
+import ch.njol.skript.fabric.effects.FabricVectorFromXYZStatement;
 import ch.njol.skript.fabric.core.FabricScriptsDirectory;
 import ch.njol.skript.platform.SkriptPlatform;
 import ch.njol.skript.platform.SkriptPlayerInfo;
@@ -213,6 +218,41 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
         registry.registerStatementFirst("kill %object%", m -> new FabricKillStatement(m.getExpression(0)));
         registry.registerStatementFirst("clear entity within %object%", m -> new FabricClearEntityStatement(m.getExpression(0)));
         registry.registerStatementFirst("clear all entities", m -> new FabricClearEntityStatement(null));
+        // Load/reload script: full reload + fire "script load" so "on script load:" handlers run (e.g. EffScriptFile tests)
+        registry.registerEffectFirst("load script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerEffectFirst("reload script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerEffectFirst("load script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerEffectFirst("reload script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerEffectFirst("reload (script named %variable%)", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerStatementFirst("load script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerStatementFirst("reload script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerStatementFirst("load script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerStatementFirst("reload script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        registry.registerStatementFirst("reload (script named %variable%)", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        // Vector effects (Phase 7): set var to vector between/from xyz
+        registry.registerEffectFirst("set %variable% to vector between %object% and %object%", m ->
+            new FabricVectorBetweenStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2)));
+        registry.registerStatementFirst("set %variable% to vector between %object% and %object%", m ->
+            new FabricVectorBetweenStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2)));
+        registry.registerEffectFirst("set %variable% to a new vector from %object%, %object% and %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        registry.registerStatementFirst("set %variable% to a new vector from %object%, %object% and %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        registry.registerEffectFirst("set %variable% to a new vector from %object%, %object%, %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        registry.registerStatementFirst("set %variable% to a new vector from %object%, %object%, %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        registry.registerEffectFirst("set %variable% to vector from %object%, %object%, %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        registry.registerStatementFirst("set %variable% to vector from %object%, %object%, %object%", m ->
+            new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
+        // Condition: X is vector(a,b,c) - core has no registerConditionFirst so generic "%object% is %object%" may match first
+        registry.registerCondition("%-object% is vector(%-number%, %-number%, %-number%)", m ->
+            new CondFabricVectorEquals(
+                Expressions.fromParsed(m.getExpression(0)),
+                Expressions.fromParsed(m.getExpression(1)),
+                Expressions.fromParsed(m.getExpression(2)),
+                Expressions.fromParsed(m.getExpression(3))));
     }
 
     @Override

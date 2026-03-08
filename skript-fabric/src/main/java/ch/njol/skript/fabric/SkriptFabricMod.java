@@ -50,6 +50,7 @@ public final class SkriptFabricMod implements ModInitializer {
         if (args.length >= 1 && "reload".equalsIgnoreCase(args[0])) {
             SkriptBootstrap.reloadScripts();
             SkriptBootstrap.fireEvent("load", new RuntimeEventContext("script_reload", null));
+            SkriptBootstrap.fireEvent("script load", null);
             sender.sendMessage("Scripts reloaded.");
             return;
         }
