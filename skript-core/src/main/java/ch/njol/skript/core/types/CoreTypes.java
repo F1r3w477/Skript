@@ -57,6 +57,8 @@ public final class CoreTypes {
             String t = s.trim();
             if ("loop-value".equalsIgnoreCase(t)) return EventValue.LOOP_VALUE;
             if ("event-entity".equalsIgnoreCase(t)) return EventValue.ENTITY;
+            if ("true".equalsIgnoreCase(t)) return true;
+            if ("false".equalsIgnoreCase(t)) return false;
             return s;
         }));
         register(new CoreClassInfo<>("objects", List.class, (s, ctx) -> parseListLiteral(s)));

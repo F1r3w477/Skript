@@ -217,8 +217,9 @@ public final class SyntaxRegistry {
             if (!(v instanceof ch.njol.skript.core.variables.VariableRef)) return null;
             return new SetVariableStatement(v, new ExprRandomNumber(m.getExpression(1), m.getExpression(2), m.getExpression(3), true));
         });
-        registerEffect("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        // %object% before %objects% so "set {_a} to false" stores a scalar, not a single-element list
         registerEffect("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        registerEffect("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
         registerEffect("assert < with > with %string%", m -> {
             try {
                 String condStr = m.getString(0);
@@ -328,8 +329,9 @@ public final class SyntaxRegistry {
             if (!(v instanceof ch.njol.skript.core.variables.VariableRef)) return null;
             return new SetVariableStatement(v, new ExprRandomNumber(m.getExpression(1), m.getExpression(2), m.getExpression(3), true));
         });
-        registerStatement("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        // %object% before %objects% so "set {_a} to false" stores a scalar
         registerStatement("set %variable% to %object%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
+        registerStatement("set %variable% to %objects%", m -> new SetVariableStatement(m.getExpression(0), Expressions.fromParsed(m.getExpression(1))));
         registerStatement("assert < with > with %string%", m -> {
             try {
                 String condStr = m.getString(0);

@@ -31,7 +31,10 @@ public final class ParseSectionTriggerItem extends CoreTriggerItem {
         if (Boolean.getBoolean("skript.fabric.trace")) {
             ctx.getLogger().info("[FabricTrace] ParseSectionTriggerItem.run: bodyEmpty=" + bodyEmpty);
         }
-        ParseLogsHolder.clear();
+        // Only clear when we will run the body; empty parse just sets the error so the next (e.g. assert) can read it
+        if (!bodyEmpty) {
+            ParseLogsHolder.clear();
+        }
         if (bodyEmpty) {
             ParseLogsHolder.set(EMPTY_PARSE_ERROR);
             if (Boolean.getBoolean("skript.fabric.trace")) {

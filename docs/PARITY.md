@@ -42,15 +42,6 @@ Supported in both platforms when using the shared core engine:
 | /skript reload| Yes    | Yes    |
 | /skript test  | Yes    | Yes (when test mode enabled) |
 
-## Fabric test exclusions
-
-Tests that are known to fail on Fabric (e.g. depend on Bukkit-only or not-yet-ported behaviour) are excluded from the reported failed set so `quickTestFabric` can pass. See `FabricTestResults.FABRIC_EXCLUDED_FAILURES` in skript-fabric. Implemented and passing in core: **SecConditional** (multiline if/then/else, parse if, else if), **do if** (set ... to ... if condition).
-
-| Test name | Reason |
-|-----------|--------|
-| any aliases random | Depends on random alias behaviour not yet ported |
-| (53 additional tests) | Unimplemented expressions/effects, parser behaviour, or Fabric-specific behaviour; excluded so build passes until ported |
-
 ## Pattern and parser (Phase 2)
 
 - Strategy: extend `CorePatternCompiler` in skript-core to support the same pattern language as legacy over time; new patterns are registered in `SyntaxRegistry`.
@@ -77,13 +68,12 @@ Tests that are known to fail on Fabric (e.g. depend on Bukkit-only or not-yet-po
 
 ## Remaining and Fabric-specific (Phase 6)
 
-- Remaining failing tests beyond the exclusion list are due to unimplemented expressions/effects or Bukkit-specific behaviour; Fabric equivalents will be added in skript-fabric as needed.
-- See `FabricTestResults.FABRIC_EXCLUDED_FAILURES` and this file for the current exclusion list.
+- Remaining failing tests are due to unimplemented expressions/effects or Bukkit-specific behaviour; Fabric equivalents will be added in skript-fabric as needed.
 
 ## Test harness and parity (Phase 7)
 
 - Fabric test run produces the same `TestResults` JSON shape as the Bukkit runner; `Environment` and `FabricTestResults` write/read `test_results.json` correctly.
-- `./gradlew quickTestFabric` runs the full test suite; excluded tests are omitted from the reported failed set so the build passes.
+- `./gradlew quickTestFabric` runs the full test suite; all test failures are reported and the build fails if any test fails.
 - Use `./gradlew conversionReport` to track legacy vs core/fabric class counts.
 
 ### Single-test Fabric run and tracing
@@ -108,21 +98,21 @@ To run **one test** on Fabric and see **targeted logs** for conditional/parse/do
 
 Properties are passed from the Gradle task to PlatformMain and then to the Fabric subprocess, so the server process receives them and the core uses `CoreTestMode.INCLUDE_TEST` and `skript.fabric.trace` as described above.
 
-## Path to full Fabric parity
+## Remaining work for Fabric parity
 
-To get all tests passing on Fabric (no exclusions):
+All tests must pass on Fabric; the build fails if any test fails. Current remaining work:
 
 1. **Conditional/parse/do-if (core runtime)**  
    - SecConditional "if any else" / "if all else", "parsing section", "do if" pass in JVM unit tests but still fail in the Fabric server run.  
    - Implemented: `ConditionalTriggerItem` sets a ThreadLocal so `CondCompare` treats both-null as false in multiline conditionals; parse section treats comment-only body as empty.  
-   - Likely cause of Fabric-only failure: trigger chain or context differs in the Fabric process (e.g. script loading path, class loading, or execution order). Next step: run a single excluded test in isolation on Fabric with logging to confirm which trigger type runs.
+   - Likely cause of Fabric-only failure: trigger chain or context differs in the Fabric process (e.g. script loading path, class loading, or execution order). Next step: run a single failing test in isolation on Fabric with logging to confirm which trigger type runs.
 
 2. **Functions (round, floor, clamp, etc.)**  
    - Tests use call syntax: `round(1.5)`, `floor(1.24)`, `clamp(0, 2, 5)`.  
    - Requires in skript-core: function-call expression parsing and a built-in function registry (or port of `DefaultFunctions` / `TestFunctions`).  
    - Legacy: `Functions.registerFunction`, `ExprFunction`, `DefaultFunctions` (Bukkit).
 
-3. **Other exclusions**  
+3. **Other failing tests**  
    - Many are Bukkit-only (commands, inventory, entities, world, config), or need expression/effect porting (ExprTernary, broadcast double-eval, time since/until, etc.).  
    - Tackle in batches: platform APIs in skript-fabric; expressions/effects in skript-core or shared code.
 
