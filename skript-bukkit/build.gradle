@@ -14,7 +14,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 dependencies {
-    compileOnly group: 'io.papermc.paper', name: 'paper-api', version: '1.21.11-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     implementation project(':skript-core')
 
     // This module will eventually host the Bukkit/Paper-specific layer.

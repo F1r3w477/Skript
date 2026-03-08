@@ -17,37 +17,37 @@ configurations {
 allprojects {
 	repositories {
 		mavenCentral()
-		maven { url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
-		maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-		maven { url 'https://repo.papermc.io/repository/maven-public/' }
-		maven { url 'https://ci.emc.gs/nexus/content/groups/aikar/' }
+		maven { url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' }
+		maven { url = 'https://oss.sonatype.org/content/repositories/snapshots/' }
+		maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+		maven { url = 'https://ci.emc.gs/nexus/content/groups/aikar/' }
 	}
 }
 
 dependencies {
-	shadow group: 'io.papermc', name: 'paperlib', version: '1.0.8'
-	shadow group: 'org.bstats', name: 'bstats-bukkit', version: '3.1.0'
-	shadow group: 'net.kyori', name: 'adventure-text-serializer-bungeecord', version: '4.4.1'
+	shadow 'io.papermc:paperlib:1.0.8'
+	shadow 'org.bstats:bstats-bukkit:3.1.0'
+	shadow 'net.kyori:adventure-text-serializer-bungeecord:4.4.1'
 
-	implementation group: 'io.papermc.paper', name: 'paper-api', version: '1.21.11-R0.1-SNAPSHOT'
-	implementation group: 'com.google.code.findbugs', name: 'findbugs', version: '3.0.1'
+	implementation 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
+	implementation 'com.google.code.findbugs:findbugs:3.0.1'
 
 	// bundled with Minecraft 1.19.4+ for display entity transforms
-	implementation group: 'org.joml', name: 'joml', version: '1.10.8'
+	implementation 'org.joml:joml:1.10.8'
 
 	// Plugin hook libraries
-	implementation group: 'com.sk89q.worldguard', name: 'worldguard-legacy', version: '7.0.0-SNAPSHOT', {
+	implementation('com.sk89q.worldguard:worldguard-legacy:7.0.0-SNAPSHOT') {
 		exclude group: 'org.bukkit', module: 'bukkit'
 	}
-	implementation group: 'net.milkbowl.vault', name: 'Vault', version: '1.7.3', {
+	implementation('net.milkbowl.vault:Vault:1.7.3') {
 		exclude group: 'org.bstats', module: 'bstats-bukkit'
 		exclude group: 'org.bukkit', module: 'bukkit'
 	}
 
 	implementation fileTree(dir: 'lib', include: '*.jar')
 
-	testShadow group: 'junit', name: 'junit', version: '4.13.2'
-	testShadow group: 'org.easymock', name: 'easymock', version: '5.5.0'
+	testShadow 'junit:junit:4.13.2'
+	testShadow 'org.easymock:easymock:5.5.0'
 
 	// Shared core engine and Bukkit platform bridge. The core module is used
 	// by both the legacy plugin and the new Fabric mod; the Bukkit bridge
@@ -62,7 +62,7 @@ checkstyle {
 }
 
 tasks.register('checkAliases') {
-	description 'Checks for the existence of the aliases.'
+	description = 'Checks for the existence of the aliases.'
 	doLast {
 		def aliasFolder = project.file('skript-aliases')
 		if (!aliasFolder.exists() || aliasFolder.listFiles().length == 0) {
@@ -142,9 +142,9 @@ processResources {
 publishing {
 	publications {
 		maven(MavenPublication) {
-			groupId 'com.github.SkriptLang'
-			artifactId 'Skript'
-			version project.version
+			groupId = 'com.github.SkriptLang'
+			artifactId = 'Skript'
+			version = project.version
 			artifact sourceJar
 			artifact tasks.jar
 		}
@@ -163,10 +163,12 @@ publishing {
 }
 
 // Task to check that test scripts are named correctly
+def regressionTestDir = file('src/test/skript/tests/regressions')
+def syntaxesTestDir = file('src/test/skript/tests/syntaxes')
 tasks.register('testNaming') {
 	doLast {
 		// Regression tests
-		for (def file : project.file('src/test/skript/tests/regressions').listFiles()) {
+		for (def file : regressionTestDir.listFiles()) {
 			def name = file.getName()
 			if (name.toLowerCase(Locale.ENGLISH) != name) {
 				throw new InvalidUserDataException('invalid test name: ' + name)
@@ -174,7 +176,7 @@ tasks.register('testNaming') {
 		}
 
 		// Syntax tests
-		for (def dir : project.file('src/test/skript/tests/syntaxes').listFiles()) {
+		for (def dir : syntaxesTestDir.listFiles()) {
 			for (def file : dir.listFiles()) {
 				def name = file.getName()
 				if (!name.startsWith('.') && !Character.isJavaIdentifierStart(name.codePointAt(0))) {
