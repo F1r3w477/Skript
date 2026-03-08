@@ -25,8 +25,11 @@ dependencies {
 
     // Shared Skript core logic
     implementation project(':skript-core')
-    // Bundle core into the Fabric mod JAR so tests can run it directly on a standalone Fabric server
+    // Fabric-only script preprocessing (e.g. "on command \"name\":" -> "command /name:")
+    implementation project(':skript-fabric-core')
+    // Bundle core and fabric-core into the Fabric mod JAR so tests can run on a standalone Fabric server
     include project(':skript-core')
+    include project(':skript-fabric-core')
 }
 
 loom {

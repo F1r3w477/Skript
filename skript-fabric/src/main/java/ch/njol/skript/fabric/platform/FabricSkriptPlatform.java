@@ -7,9 +7,11 @@ import ch.njol.skript.core.types.ParseContext;
 import ch.njol.skript.platform.SkriptCommandExecutor;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.fabric.effects.FabricClearEntityStatement;
+import ch.njol.skript.fabric.effects.FabricExecuteConsoleCommandStatement;
 import ch.njol.skript.fabric.effects.FabricKillStatement;
 import ch.njol.skript.fabric.effects.FabricSetBlockStatement;
 import ch.njol.skript.fabric.effects.FabricSpawnStatement;
+import ch.njol.skript.fabric.core.FabricScriptsDirectory;
 import ch.njol.skript.platform.SkriptPlatform;
 import ch.njol.skript.platform.SkriptPlayerInfo;
 import ch.njol.skript.platform.SkriptScheduler;
@@ -21,7 +23,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -32,9 +36,14 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
     private final SkriptLogger logger;
     private final SkriptScheduler scheduler;
     private final Path configDirectory;
-    private final Path scriptsDirectory;
+    /** Real script location (config or skript.testing.dir). */
+    private final Path realScriptsPath;
+    /** Stable directory for preprocessed scripts; core loads from here. */
+    private final Path scriptsWorkDir;
     private volatile SkriptCommandExecutor skriptCommandExecutor;
     private volatile MinecraftServer server;
+    /** Script-defined commands (e.g. "testing1") for "on command /name:". */
+    private final Map<String, SkriptCommandExecutor> scriptCommands = new ConcurrentHashMap<>();
 
     public FabricSkriptPlatform(SkriptLogger logger) {
         this.logger = logger;
@@ -59,11 +68,12 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
 				this.logger.error("Failed to resolve skript.testing.dir='" + testingDirProp + "', falling back to default scripts directory.", e);
 			}
 		}
-		this.scriptsDirectory = scriptsDir;
+		this.realScriptsPath = scriptsDir;
+		this.scriptsWorkDir = baseConfigDir.resolve("scripts-preprocessed");
 
         try {
             Files.createDirectories(this.configDirectory);
-            Files.createDirectories(this.scriptsDirectory);
+            Files.createDirectories(this.realScriptsPath);
         } catch (Exception e) {
             this.logger.error("Failed to create Skript config or scripts directories at " + this.configDirectory, e);
         }
@@ -91,7 +101,8 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
 
     @Override
     public Path getScriptsDirectory() {
-        return scriptsDirectory;
+        // Re-run preprocessor so reload sees updated content; core loads from work dir.
+        return FabricScriptsDirectory.prepareScriptsDirectory(realScriptsPath, scriptsWorkDir, logger);
     }
 
     @Override
@@ -104,8 +115,17 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
     public void registerCommand(String name, String description, SkriptCommandExecutor executor) {
         if ("skript".equalsIgnoreCase(name)) {
             this.skriptCommandExecutor = executor;
+        } else if (name != null && !name.isBlank()) {
+            scriptCommands.put(name.toLowerCase(), executor);
         }
-        // Actual Fabric command registration happens in Phase 4; executor is wired then.
+    }
+
+    /**
+     * Script-defined commands registered via "on command /name:". Used by Fabric command registration
+     * to register each with Brigadier so they are executable.
+     */
+    public Map<String, SkriptCommandExecutor> getScriptCommands() {
+        return Collections.unmodifiableMap(scriptCommands);
     }
 
     /**
@@ -179,6 +199,8 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
 
     @Override
     public void registerPlatformEffects(SyntaxRegistry registry) {
+        registry.registerEffectFirst("execute console command %string%", m -> new FabricExecuteConsoleCommandStatement(m.getExpression(0)));
+        registry.registerStatementFirst("execute console command %string%", m -> new FabricExecuteConsoleCommandStatement(m.getExpression(0)));
         registry.registerEffectFirst("spawn %object% at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
         registry.registerEffectFirst("spawn < at > at %object%", m -> new FabricSpawnStatement(m.getExpression(0), m.getExpression(1)));
         registry.registerEffectFirst("set block at %object% to %object%", m -> new FabricSetBlockStatement(m.getExpression(0), m.getExpression(1)));

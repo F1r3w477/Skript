@@ -14,4 +14,4 @@ rootProject.name = 'Skript'
 
 // Additional modules for porting Skript to other platforms.
 // The legacy Bukkit/Paper plugin remains in the root project for now.
-include 'skript-core', 'skript-bukkit', 'skript-fabric'
+include 'skript-core', 'skript-bukkit', 'skript-fabric-core', 'skript-fabric'
