@@ -7,8 +7,14 @@ import ch.njol.skript.core.types.ParseContext;
 import ch.njol.skript.platform.SkriptCommandExecutor;
 import ch.njol.skript.platform.SkriptLogger;
 import ch.njol.skript.core.lang.Expressions;
+import ch.njol.skript.core.lang.SetVariableStatement;
+import ch.njol.skript.fabric.conditions.CondFabricCurrentScriptExists;
+import ch.njol.skript.fabric.conditions.CondFabricExists;
 import ch.njol.skript.fabric.conditions.CondFabricVectorEquals;
 import ch.njol.skript.fabric.effects.FabricClearEntityStatement;
+import ch.njol.skript.fabric.expressions.ExprFabricCurrentScript;
+import ch.njol.skript.fabric.expressions.ExprFabricScriptByName;
+import ch.njol.skript.fabric.expressions.ExprFabricScriptsNamed;
 import ch.njol.skript.fabric.effects.FabricExecuteConsoleCommandStatement;
 import ch.njol.skript.fabric.effects.FabricKillStatement;
 import ch.njol.skript.fabric.effects.FabricLoadScriptStatement;
@@ -225,6 +231,33 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
         registry.registerEffectFirst("reload script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
         registry.registerEffectFirst("reload (script named %variable%)", m -> new FabricLoadScriptStatement(m.getExpression(0)));
         registry.registerStatementFirst("load script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
+        // Script reflection: set var to the script named X (path string if found)
+        registry.registerEffectFirst("set %variable% to the script named %string%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerEffectFirst("set %variable% to the script named %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerStatementFirst("set %variable% to the script named %string%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerStatementFirst("set %variable% to the script named %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerEffectFirst("set %variable% to script named %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerStatementFirst("set %variable% to script named %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptByName(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerEffectFirst("set %variable% to the scripts named %objects%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptsNamed(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerStatementFirst("set %variable% to the scripts named %objects%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptsNamed(Expressions.fromParsed(m.getExpression(1)))));
+        registry.registerEffectFirst("set %variable% to the scripts named %object% and %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptsNamed(Expressions.fromParsed(m.getExpression(1)), Expressions.fromParsed(m.getExpression(2)))));
+        registry.registerStatementFirst("set %variable% to the scripts named %object% and %object%", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricScriptsNamed(Expressions.fromParsed(m.getExpression(1)), Expressions.fromParsed(m.getExpression(2)))));
+        registry.registerEffectFirst("set %variable% to the current script", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricCurrentScript()));
+        registry.registerStatementFirst("set %variable% to the current script", m ->
+            new SetVariableStatement(m.getExpression(0), new ExprFabricCurrentScript()));
+        registry.registerConditionFirst("the current script exists", m -> new CondFabricCurrentScriptExists());
+        registry.registerConditionFirst("%-object% exists", m -> new CondFabricExists(Expressions.fromParsed(m.getExpression(0))));
         registry.registerStatementFirst("reload script named %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
         registry.registerStatementFirst("load script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
         registry.registerStatementFirst("reload script [file] %variable%", m -> new FabricLoadScriptStatement(m.getExpression(0)));
@@ -246,8 +279,7 @@ public final class FabricSkriptPlatform implements SkriptPlatform {
             new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
         registry.registerStatementFirst("set %variable% to vector from %object%, %object%, %object%", m ->
             new FabricVectorFromXYZStatement(m.getExpression(0), m.getExpression(1), m.getExpression(2), m.getExpression(3)));
-        // Condition: X is vector(a,b,c) - core has no registerConditionFirst so generic "%object% is %object%" may match first
-        registry.registerCondition("%-object% is vector(%-number%, %-number%, %-number%)", m ->
+        registry.registerConditionFirst("%-object% is vector(%-number%, %-number%, %-number%)", m ->
             new CondFabricVectorEquals(
                 Expressions.fromParsed(m.getExpression(0)),
                 Expressions.fromParsed(m.getExpression(1)),

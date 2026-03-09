@@ -13,6 +13,9 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
+// Contains a copy of skript-core (ch.njol.skript.core.*, platform.*) so Fabric can
+// apply changes (getLoadedScripts, registerConditionFirst, current script, etc.) without
+// editing upstream. Periodically sync from skript-core: copy skript-core/src/main/java/ch/njol/skript/{core,platform}
+// over this module's same paths and resolve any conflicts.
 dependencies {
-    implementation project(':skript-core')
 }

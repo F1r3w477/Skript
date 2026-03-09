@@ -23,12 +23,8 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:0.16.9"
     modImplementation "net.fabricmc.fabric-api:fabric-api:0.141.0+1.21.11"
 
-    // Shared Skript core logic
-    implementation project(':skript-core')
-    // Fabric-only script preprocessing (e.g. "on command \"name\":" -> "command /name:")
+    // Skript core lives in skript-fabric-core (copy of skript-core + Fabric-specific changes)
     implementation project(':skript-fabric-core')
-    // Bundle core and fabric-core into the Fabric mod JAR so tests can run on a standalone Fabric server
-    include project(':skript-core')
     include project(':skript-fabric-core')
 }
 

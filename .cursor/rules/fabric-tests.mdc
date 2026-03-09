@@ -1,10 +1,11 @@
 ---
-description: Fabric policy — tests unchanged and passing; Java changes only in skript-fabric
+description: Fabric policy — tests unchanged; prefer fabric/fabric-core to keep upstream syncable
 alwaysApply: true
 ---
 
 # Fabric and test policy
 
-- **Do not change existing Skript tests.** Leave test scripts and test names as they are.
+- **Do not change existing Skript tests.** Leave test scripts (`.sk` files under `src/test/skript/tests/`) and test names as they are.
 - **All script tests must pass on the Fabric version.** The Fabric test run (`./gradlew quickTestFabric`) must complete with no test failures. Fix regressions by changing implementation or Fabric-specific code, not by modifying or skipping tests.
-- **Only change Java code in the Fabric port.** Do not modify Java in `skript-core/`, `skript-bukkit/`, or the root project `src/main/java/`. All Java changes must be confined to `skript-fabric/`.
+- **Prefer changes in `skript-fabric/` and `skript-fabric-core/`** so that upstream (`skript-core/`, `skript-bukkit/`, root `src/main/java/`) can stay in sync with the main Skript repo without overwriting local edits. Use reflection and fabric-only wiring where possible (e.g. `FabricLoadedScripts`, `FabricSyntaxRegistryHelper`).
+- **Minimal upstream changes are allowed** when necessary to get tests passing (e.g. exposing a small API in `skript-core` that Fabric uses). Prefer the minimal change that unblocks Fabric.
